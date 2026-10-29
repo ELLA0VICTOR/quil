@@ -110,6 +110,7 @@ try {
       Buffer.from(result.data, "base64"),
     );
   };
+
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Log.enable");
@@ -122,77 +123,158 @@ try {
     deviceScaleFactor: 1,
     mobile: false,
   });
-  await send("Page.navigate", { url: "http://127.0.0.1:4173" });
+  await send("Page.navigate", {
+    url: process.env.QUIL_QA_URL || "http://127.0.0.1:4173",
+  });
   for (let i = 0; i < 50; i++) {
     if (
       await evaluate(
-        `document.readyState==='complete'&&!!document.querySelector('.particle-scene canvas')`,
+        "document.readyState==='complete'&&!!document.querySelector('.particle-scene canvas')",
       )
     )
       break;
     await wait(200);
   }
   await evaluate("document.fonts.ready");
-  await wait(900);
+  await wait(700);
   const desktop = await evaluate(
-    `({title:document.title,canvas:!!document.querySelector('canvas'),overflow:document.documentElement.scrollWidth>innerWidth,heading:document.querySelector('h1')?.textContent})`,
+    `({canvas:!!document.querySelector('canvas'),overflow:document.documentElement.scrollWidth>innerWidth,controls:document.querySelectorAll('.scene-controls').length,heroCards:document.querySelectorAll('.hero-section .feature-card').length})`,
   );
-  await screenshot("01-landing-cube");
-  await click(".scene-controls button:nth-child(3)");
-  await wait(2200);
-  const treeSelected = await evaluate(`document.querySelector('.scene-caption')?.textContent.includes('GROW FROM HERE')`);
-  await click('.pause-button');
-  const pauseWorks = await evaluate(`document.querySelector('.pause-button')?.getAttribute('aria-pressed')==='true'`);
-  await screenshot("02-landing-tree");
-  await send("Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x: 655,
-    y: 390,
-  });
-  await wait(250);
-  await screenshot("03-tree-pointer");
+  await screenshot("11-open-hero");
+  let autoMorph = false;
+  for (let i = 0; i < 70; i++) {
+    autoMorph = await evaluate(
+      "document.querySelector('.scene-caption')?.textContent.includes('GROW FROM HERE')",
+    );
+    if (autoMorph) break;
+    await wait(200);
+  }
+  await screenshot("12-open-tree");
+  await evaluate(
+    "document.getElementById('how-it-works').scrollIntoView({behavior:'instant'})",
+  );
+  await wait(200);
+  const landingCrew = await evaluate(
+    "document.querySelectorAll('.landing-crew .crew-member').length",
+  );
+  await screenshot("13-landing-crew");
+  await evaluate(
+    "document.getElementById('footer').scrollIntoView({behavior:'instant'})",
+  );
+  await wait(100);
+  await screenshot("14-footer");
   await click(".header-cta");
-  await wait(450);
-  const workspace = await evaluate(
-    `({heading:document.querySelector('h1')?.textContent,overflow:document.documentElement.scrollWidth>innerWidth,preview:document.querySelector('.example-banner')?.textContent})`,
+  await wait(350);
+  const room = await evaluate(
+    `({heading:document.querySelector('h1')?.textContent,agents:document.querySelectorAll('.room-crew-area .crew-member').length,forms:document.querySelectorAll('select').length,sidebars:document.querySelectorAll('.workspace-sidebar').length,overflow:document.documentElement.scrollWidth>innerWidth})`,
   );
-  await screenshot("04-workspace-empty");
-  await click(".example-button");
-  await wait(4500);
-  const example = await evaluate(
-    `({cards:document.querySelectorAll('.prospect-card').length,events:document.querySelectorAll('.activity-event').length})`,
-  );
-  await click(".prospect-card .save-button");
-  await click(".prospect-card .text-link");
-  await wait(100);
-  const dialog = await evaluate(
-    `({open:!!document.querySelector('[role=dialog]'),sources:document.querySelectorAll('.evidence-item').length,draft:!!document.querySelector('.draft-textarea')})`,
-  );
-  await screenshot("05-opportunity-detail");
-  await send("Input.dispatchKeyEvent", {
-    type: "keyDown",
-    key: "Escape",
-    code: "Escape",
+  await screenshot("15-crew-welcome");
+  const welcomeFit = [];
+  for (const [width, height] of [
+    [1366, 768],
+    [1280, 720],
+    [1440, 650],
+    [1280, 600],
+    [1920, 600],
+    [960, 540],
+    [1920, 1080],
+    [768, 700],
+    [390, 844],
+    [390, 667],
+    [375, 568],
+  ]) {
+    await send("Emulation.setDeviceMetricsOverride", {
+      width,
+      height,
+      deviceScaleFactor: 1,
+      mobile: width < 600,
+    });
+    await wait(650);
+    const fit = await evaluate(`(()=>{
+      const rect=selector=>document.querySelector(selector).getBoundingClientRect();
+      const greeting=rect('.room-welcome h1'), conversation=document.querySelector('.room-conversation'), feed=conversation.getBoundingClientRect(), composer=rect('.chat-composer');
+      return {
+        width:innerWidth,height:innerHeight,
+        greetingVisible:greeting.top>=feed.top&&greeting.bottom<=feed.bottom,
+        welcomeFits:conversation.scrollHeight<=conversation.clientHeight+1,
+        composerVisible:composer.bottom<=innerHeight&&composer.top>=feed.bottom,
+        pageFits:document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth,
+        agentsVisible:[...document.querySelectorAll('.crew-person')].every(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=greeting.top}),
+        labelClearance:greeting.top-Math.max(...[...document.querySelectorAll('.crew-person')].map(el=>el.getBoundingClientRect().bottom)),
+        quietWelcome:!document.querySelector('.room-preview-indicator')&&!document.querySelector('.room-header-middle')&&!document.querySelector('.composer-footnote').textContent.includes('Example mode'),
+        bodyFont:getComputedStyle(document.querySelector('.room-welcome p')).fontFamily,
+        displayFont:getComputedStyle(document.querySelector('.room-welcome h1')).fontFamily,
+        fontLoaded:document.fonts.check('14px "SUSE Mono"'),
+        scroll:conversation.scrollTop,overflowBy:conversation.scrollHeight-conversation.clientHeight
+      };
+    })()`);
+    welcomeFit.push(fit);
+    if (
+      width === 1280 ||
+      height === 667 ||
+      height === 568 ||
+      height === 540 ||
+      (width === 1920 && height === 600)
+    )
+      await screenshot(`welcome-${width}x${height}`);
+  }
+  await send("Emulation.setDeviceMetricsOverride", {
+    width: 1440,
+    height: 960,
+    deviceScaleFactor: 1,
+    mobile: false,
   });
-  await send("Input.dispatchKeyEvent", {
-    type: "keyUp",
-    key: "Escape",
-    code: "Escape",
-  });
-  await evaluate(
-    `document.querySelectorAll('.workspace-sidebar nav button')[1].click()`,
+  await click(".welcome-introduction button");
+  await wait(200);
+  await click(".crew-member-pip .crew-person");
+  const introduced = await evaluate(
+    "document.querySelector('.conversation-messages').textContent.includes('find businesses that fit your brief')",
   );
-  await wait(100);
+  const type = async (text) => {
+    await evaluate("document.getElementById('crew-prompt').focus()");
+    await send("Input.insertText", { text });
+  };
+  await type(
+    "Find cleaning businesses in Manchester that could use a website.",
+  );
+  await click(".composer-send");
+  await wait(3200);
+  const discovering = await evaluate(
+    "document.querySelector('.crew-scene-room').dataset.phase",
+  );
+  await screenshot("16-crew-on-a-mission");
+  await click(".composer-stop");
+  const paused = await evaluate(
+    "document.querySelector('.crew-scene-room').dataset.phase==='paused'",
+  );
+  await click(".resume-mission");
+  for (let i = 0; i < 65; i++) {
+    if (
+      await evaluate(
+        "document.querySelector('.crew-scene-room').dataset.phase==='complete'",
+      )
+    )
+      break;
+    await wait(250);
+  }
+  const mission = await evaluate(
+    `({phase:document.querySelector('.crew-scene-room').dataset.phase,leads:document.querySelectorAll('.conversation-results .lead-entry').length,review:document.querySelector('.conversation-messages').textContent.includes('withdrawn'),exampleLabel:document.querySelector('.results-note').textContent.includes('FICTIONAL')})`,
+  );
+  await screenshot("17-conversation-results");
+  await click(".lead-entry .lead-save");
+  await click(".lead-entry-links button:first-child");
+  const evidence = await evaluate(
+    "document.querySelectorAll('.lead-evidence>div').length",
+  );
+  await click(".lead-entry-links button:nth-child(2)");
+  const draft = await evaluate(
+    "!!document.querySelector('.lead-introduction textarea')",
+  );
+  await screenshot("18-inline-introduction");
+  await click(".room-saved-button");
+  await wait(150);
   const saved = await evaluate(
-    `document.querySelectorAll('.saved-grid .prospect-card').length`,
-  );
-  await evaluate(
-    `document.querySelectorAll('.workspace-sidebar nav button')[0].click()`,
-  );
-  await screenshot("06-workspace-results");
-  await click(".search-panel form button[type=submit]");
-  const connections = await evaluate(
-    `({modal:document.querySelector('#modal-heading')?.textContent,keysInBrowser:document.querySelectorAll('input[type=password]').length})`,
+    "document.querySelectorAll('.saved-leads .lead-entry').length",
   );
   await send("Input.dispatchKeyEvent", {
     type: "keyDown",
@@ -204,37 +286,61 @@ try {
     key: "Escape",
     code: "Escape",
   });
+  await type("Only show the strongest opportunities.");
+  await click(".composer-send");
+  await wait(150);
+  const filtered = await evaluate(
+    "document.querySelector('.conversation-results:last-child')?.querySelectorAll('.lead-entry').length",
+  );
   await send("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,
     deviceScaleFactor: 1,
     mobile: true,
   });
-  await screenshot("07-mobile-workspace");
-  const mobileWorkspaceOverflow = await evaluate(
+  await wait(150);
+  const mobileRoom = await evaluate(
+    `({overflow:document.documentElement.scrollWidth>innerWidth,composer:document.querySelector('.chat-composer').getBoundingClientRect().bottom<=innerHeight,agents:document.querySelectorAll('.room-crew-area .crew-member').length})`,
+  );
+  await screenshot("19-mobile-conversation");
+  await click(".room-header .icon-button");
+  await wait(100);
+  await screenshot("20-mobile-welcome");
+  const savedSurvivesReset = await evaluate(
+    "document.querySelector('.room-saved-button').textContent.includes('1')",
+  );
+  await click(".room-header .brand");
+  await wait(500);
+  await screenshot("21-mobile-hero");
+  const mobileLandingOverflow = await evaluate(
     "document.documentElement.scrollWidth>innerWidth",
   );
-  await click(".sidebar-home");
-  await wait(650);
-  await screenshot("08-mobile-landing");
-  const mobile = await evaluate(
-    `({overflow:document.documentElement.scrollWidth>innerWidth,canvas:!!document.querySelector('canvas')})`,
+  await evaluate(
+    "document.getElementById('how-it-works').scrollIntoView({behavior:'instant'})",
   );
+  await wait(150);
+  await screenshot("22-mobile-crew");
   await click(".mobile-menu-button");
   const mobileMenu = await evaluate(
-    `document.querySelector('.mobile-menu-button').getAttribute('aria-expanded')==='true'`,
+    "document.querySelector('.mobile-menu-button').getAttribute('aria-expanded')==='true'",
   );
   const report = {
     desktop,
-    treeSelected,
-    pauseWorks,
-    workspace,
-    example,
-    dialog,
+    autoMorph,
+    landingCrew,
+    room,
+    welcomeFit,
+    introduced,
+    discovering,
+    paused,
+    mission,
+    evidence,
+    draft,
     saved,
-    connections,
-    mobile,
-    mobileWorkspaceOverflow,
+    filtered,
+    mobileRoom,
+    savedSurvivesReset,
+    mobileLandingOverflow,
     mobileMenu,
     errors: [...new Set(errors)],
   };
@@ -244,17 +350,43 @@ try {
   );
   console.log(JSON.stringify(report, null, 2));
   if (
-    report.errors.length ||
+    errors.length ||
     desktop.overflow ||
-    !treeSelected ||
-    !pauseWorks ||
-    workspace.overflow ||
-    mobile.overflow ||
-    mobileWorkspaceOverflow ||
-    example.cards !== 3 ||
-    example.events !== 5 ||
+    desktop.controls ||
+    desktop.heroCards ||
+    !autoMorph ||
+    landingCrew !== 5 ||
+    room.agents !== 5 ||
+    room.forms ||
+    room.sidebars ||
+    room.overflow ||
+    welcomeFit.some(
+      (fit) =>
+        !fit.greetingVisible ||
+        !fit.welcomeFits ||
+        !fit.composerVisible ||
+        !fit.pageFits ||
+        !fit.agentsVisible ||
+        fit.labelClearance < 20 ||
+        !fit.quietWelcome ||
+        !fit.fontLoaded ||
+        !fit.bodyFont.includes("SUSE Mono") ||
+        !fit.displayFont.includes("Departure"),
+    ) ||
+    !introduced ||
+    !paused ||
+    mission.phase !== "complete" ||
+    mission.leads !== 3 ||
+    !mission.review ||
+    !mission.exampleLabel ||
+    evidence !== 3 ||
+    !draft ||
     saved !== 1 ||
-    !dialog.open ||
+    filtered !== 1 ||
+    mobileRoom.overflow ||
+    !mobileRoom.composer ||
+    !savedSurvivesReset ||
+    mobileLandingOverflow ||
     !mobileMenu
   )
     process.exitCode = 1;

@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
-export type SceneShape = "auto" | "cube" | "tree";
 type Props = {
-  shape: SceneShape;
-  paused: boolean;
   onPhase?: (phase: "cube" | "tree") => void;
+};
+
+const MOTION = {
+  cycleSeconds: 5.2,
+  toTreeStart: 1.5,
+  toTreeEnd: 2.2,
+  toCubeStart: 4.1,
+  toCubeEnd: 4.8,
+  idleSpin: 0.78,
 };
 const vertexShader = `
 attribute vec3 aTree; attribute float aSeed;
@@ -143,13 +149,13 @@ function makeParticleGeometry(count: number, edgesOnly = false) {
   geometry.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
   return geometry;
 }
-export default function ParticleScene({ shape, paused, onPhase }: Props) {
+export default function ParticleScene({ onPhase }: Props) {
   const container = useRef<HTMLDivElement>(null),
-    options = useRef({ shape, paused, onPhase });
+    options = useRef({ onPhase });
   const [unavailable, setUnavailable] = useState(false);
   useEffect(() => {
-    options.current = { shape, paused, onPhase };
-  }, [shape, paused, onPhase]);
+    options.current = { onPhase };
+  }, [onPhase]);
   useEffect(() => {
     const host = container.current;
     if (!host) return;
@@ -221,35 +227,44 @@ export default function ParticleScene({ shape, paused, onPhase }: Props) {
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending,
       uniforms: { uTime: { value: 0 } },
-      vertexShader: `varying vec2 vPosition;uniform float uTime;void main(){vec3 p=position;vPosition=p.xy;float r=length(p.xy);p.z=sin(r*5.2-uTime*.7+sin(atan(p.y,p.x)*3.0)*.3)*.022;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,
-      fragmentShader: `varying vec2 vPosition;uniform float uTime;void main(){float r=length(vPosition);float a=atan(vPosition.y,vPosition.x);float wave=pow(max(0.0,cos(r*6.4-uTime*.42+sin(a*3.0+r*.65+uTime*.12)*.24)),20.0);float swirl=pow(max(0.0,sin(a*2.0-r*2.4+uTime*.12)),15.0);float fade=exp(-r*.25)*smoothstep(.18,.75,r);vec3 color=mix(vec3(.055,.2,.8),vec3(.09,.4,.95),wave);gl_FragColor=vec4(color,(wave*.43+swirl*.017)*fade);}`,
+      vertexShader: `
+        varying vec2 vPosition;
+        uniform float uTime;
+        void main() {
+          vec3 p = position;
+          vPosition = p.xy;
+          float r = length(p.xy);
+          float angle = atan(p.y, p.x) - uTime * .38;
+          float ripple = r * 6.4 - uTime * 1.35
+            + sin(angle * 3.0 + r * .65) * .38;
+          p.z = sin(ripple) * .03;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec2 vPosition;
+        uniform float uTime;
+        void main() {
+          float r = length(vPosition);
+          float angle = atan(vPosition.y, vPosition.x) - uTime * .38;
+          float ripple = r * 6.4 - uTime * 1.35
+            + sin(angle * 3.0 + r * .65) * .38;
+          float wave = pow(max(0.0, cos(ripple)), 20.0);
+          float spiral = pow(max(0.0, cos(angle * 3.0 - r * 2.8)), 28.0);
+          float fade = exp(-r * .25) * smoothstep(.18, .75, r);
+          vec3 color = mix(vec3(.055, .2, .8), vec3(.09, .4, .95), wave);
+          gl_FragColor = vec4(color, (wave * .43 + spiral * .15) * fade);
+        }
+      `,
     });
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(35, 35, 100, 100),
       floorMaterial,
     );
+    floor.name = "spiral-pool";
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -1.85;
     scene.add(floor);
-    const ringGroup = new THREE.Group();
-    group.add(ringGroup);
-    const ringMaterials: THREE.MeshBasicMaterial[] = [];
-    for (let i = 0; i < 3; i++) {
-      const m = new THREE.MeshBasicMaterial({
-        color: i === 1 ? 0x78aaff : 0xb9c8e5,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      });
-      ringMaterials.push(m);
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(2.52 + i * 0.14, 0.006, 4, 220),
-        m,
-      );
-      ring.rotation.set(0.45 + i * 0.7, i * 0.56, -0.48 + i * 0.56);
-      ringGroup.add(ring);
-    }
     const canvas = document.createElement("canvas");
     canvas.width = 640;
     canvas.height = 256;
@@ -321,17 +336,61 @@ export default function ParticleScene({ shape, paused, onPhase }: Props) {
     observer.observe(host);
     resize();
     let targetActive = 0;
+    const previousPointer = new THREE.Vector2();
+    const pointerRotation = new THREE.Vector2();
+    const rotationTarget = new THREE.Vector2();
+    let hasRotationSample = false;
+    let lastPointerMotion = -Infinity;
+    let spinSpeed = MOTION.idleSpin;
+    let autoYaw = 0.56;
     const pointerMove = (event: PointerEvent) => {
       const rect = host.getBoundingClientRect();
       pointer.set(
         ((event.clientX - rect.left) / rect.width) * 2 - 1,
         (-(event.clientY - rect.top) / rect.height) * 2 + 1,
       );
-      targetActive =
-        event.clientY >= rect.top && event.clientY <= rect.bottom ? 1 : 0;
+      const inside =
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom;
+      targetActive = inside ? 1 : 0;
+      const overControl =
+        event.target instanceof Element &&
+        Boolean(event.target.closest("a,button,input,textarea,select"));
+      const canSteer =
+        inside &&
+        !overControl &&
+        !reducedMotion &&
+        Math.abs(pointer.x) < 0.85 &&
+        Math.abs(pointer.y) < 0.8;
+
+      if (canSteer && hasRotationSample) {
+        const dx = THREE.MathUtils.clamp(
+          pointer.x - previousPointer.x,
+          -0.25,
+          0.25,
+        );
+        const dy = THREE.MathUtils.clamp(
+          pointer.y - previousPointer.y,
+          -0.25,
+          0.25,
+        );
+        rotationTarget.y += dx * 1.8;
+        rotationTarget.x = THREE.MathUtils.clamp(
+          rotationTarget.x - dy,
+          -0.5,
+          0.5,
+        );
+        if (Math.abs(dx) + Math.abs(dy) > 0.00005)
+          lastPointerMotion = performance.now();
+      }
+      previousPointer.copy(pointer);
+      hasRotationSample = canSteer;
     };
     const pointerLeave = () => {
       targetActive = 0;
+      hasRotationSample = false;
     };
     window.addEventListener("pointermove", pointerMove, { passive: true });
     document.addEventListener("pointerleave", pointerLeave);
@@ -350,31 +409,75 @@ export default function ParticleScene({ shape, paused, onPhase }: Props) {
     const render = (now: number) => {
       frame = requestAnimationFrame(render);
       const elapsed = Math.min((now - previous) / 1000, 0.12);
-      const delta = Math.min(elapsed, 0.045);
       previous = now;
       if (!visible || document.hidden) return;
-      if (!options.current.paused && !reducedMotion) time += delta;
-      const cycle = time % 24,
-        requested = options.current.shape;
-      let morph = requested === "tree" ? 1 : 0;
-      if (requested === "auto") {
-        if (cycle < 6) morph = 0;
-        else if (cycle < 10) morph = THREE.MathUtils.smoothstep(cycle, 6, 10);
-        else if (cycle < 18) morph = 1;
-        else if (cycle < 22)
-          morph = 1 - THREE.MathUtils.smoothstep(cycle, 18, 22);
-      }
+      if (!reducedMotion) time += elapsed;
+      const cycle = time % MOTION.cycleSeconds;
+      let morph = 0;
+      if (cycle >= MOTION.toTreeStart && cycle < MOTION.toTreeEnd)
+        morph = THREE.MathUtils.smoothstep(
+          cycle,
+          MOTION.toTreeStart,
+          MOTION.toTreeEnd,
+        );
+      else if (cycle >= MOTION.toTreeEnd && cycle < MOTION.toCubeStart)
+        morph = 1;
+      else if (cycle >= MOTION.toCubeStart && cycle < MOTION.toCubeEnd)
+        morph =
+          1 -
+          THREE.MathUtils.smoothstep(
+            cycle,
+            MOTION.toCubeStart,
+            MOTION.toCubeEnd,
+          );
       uniforms.uMorph.value = THREE.MathUtils.damp(
         uniforms.uMorph.value,
         morph,
-        requested === "auto" ? 7 : 3.8,
+        13,
         elapsed,
       );
       uniforms.uTime.value = time;
-      uniforms.uActive.value += (targetActive - uniforms.uActive.value) * 0.045;
-      group.rotation.y = 0.56 + time * 0.115;
+      uniforms.uActive.value = THREE.MathUtils.damp(
+        uniforms.uActive.value,
+        targetActive,
+        9,
+        elapsed,
+      );
+
+      // Cursor movement steers the object; automatic spin eases back in afterward.
+      // Accumulating yaw avoids snapping back when the pointer leaves the scene.
+      const steering = targetActive > 0 && now - lastPointerMotion < 180;
+      spinSpeed = THREE.MathUtils.damp(
+        spinSpeed,
+        steering ? 0.06 : MOTION.idleSpin,
+        8,
+        elapsed,
+      );
+      if (!reducedMotion) autoYaw += spinSpeed * elapsed;
+      if (!targetActive)
+        rotationTarget.x = THREE.MathUtils.damp(
+          rotationTarget.x,
+          0,
+          3,
+          elapsed,
+        );
+      pointerRotation.x = THREE.MathUtils.damp(
+        pointerRotation.x,
+        rotationTarget.x,
+        12,
+        elapsed,
+      );
+      pointerRotation.y = THREE.MathUtils.damp(
+        pointerRotation.y,
+        rotationTarget.y,
+        12,
+        elapsed,
+      );
+      group.rotation.y = autoYaw + pointerRotation.y;
       group.rotation.x =
-        0.045 + Math.sin(time * 0.22) * 0.035 * (1 - uniforms.uMorph.value);
+        0.045 +
+        pointerRotation.x +
+        Math.sin(time * 0.22) * 0.035 * (1 - uniforms.uMorph.value);
       edgeMaterial.uniforms.uMorph.value = uniforms.uMorph.value;
       edgeMaterial.uniforms.uTime.value = time;
       edgeMaterial.uniforms.uActive.value = uniforms.uActive.value;
@@ -383,12 +486,9 @@ export default function ParticleScene({ shape, paused, onPhase }: Props) {
       reflectionMaterial.uniforms.uTime.value = time;
       labelMaterial.opacity =
         Math.max(0, 1 - uniforms.uMorph.value * 2.5) * 0.93;
-      ringMaterials.forEach((m) => {
-        m.opacity = uniforms.uMorph.value * 0.24;
-      });
-      ringGroup.rotation.y = time * 0.13;
-      ringGroup.rotation.z = Math.sin(time * 0.1) * 0.3;
       floorMaterial.uniforms.uTime.value = time;
+      // Turn the water surface as the shader sends ripples out from its center.
+      floor.rotation.z = -time * 0.1;
       stars.rotation.y = time * 0.0009;
       const phase = uniforms.uMorph.value > 0.5 ? "tree" : "cube";
       if (lastPhase !== phase) {
@@ -424,7 +524,7 @@ export default function ParticleScene({ shape, paused, onPhase }: Props) {
       ref={container}
       className={`particle-scene${unavailable ? " scene-unavailable" : ""}`}
       role="img"
-      aria-label="An interactive blue particle cube transforms into a branching tree above rippling water. Move your pointer to bend the particles."
+      aria-label="A fast-rotating blue particle cube repeatedly transforms into a branching tree above rippling water. Move your pointer to rotate the scene and bend the particles."
     >
       {unavailable && (
         <div className="scene-fallback">

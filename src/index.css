@@ -1,4 +1,11 @@
 @font-face {
+  font-family: "SUSE Mono";
+  src: url("/fonts/SUSEMono-Latin-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
   font-family: Departure;
   src: url("/fonts/DepartureMono-Regular.woff2") format("woff2");
   font-style: normal;
@@ -6,7 +13,7 @@
   font-display: swap;
 }
 :root {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "SUSE Mono", "Courier New", monospace;
   color: #f2f3f7;
   background: #030407;
   font-synthesis: none;
@@ -22,6 +29,7 @@
   --blue: #278cff;
   --cyan: #a1d6ff;
   --display: Departure, "Courier New", monospace;
+  --body: "SUSE Mono", "Courier New", monospace;
 }
 * {
   box-sizing: border-box;
@@ -115,7 +123,7 @@ textarea {
 button:disabled {
   opacity: 0.55;
 }
-body:has(.modal-backdrop) {
+body:has(.sheet-backdrop) {
   overflow: hidden;
 }
 .sr-only {

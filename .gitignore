@@ -7,22 +7,68 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencies and builds
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Local environments and credentials
 *.local
 .env
 .env.*
+# Keep only placeholder values in this shareable template.
 !.env.example
+.envrc
+.npmrc
+.netrc
+.secrets/
+secrets/
+credentials/
+credentials*.json
+*.credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local tooling, hosting metadata and generated previews
+.openai/
+.codex/
+AGENTS.md
 .sites-runtime/
 .sites-checkout/
 artifacts/
+.vercel/
+.netlify/
+.cache/
+.vite/
+.eslintcache
+
+# Test reports and local application data
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.bak
 *.suo
 *.ntvs*
 *.njsproj
