@@ -12,7 +12,8 @@ This version is a **local frontend prototype**, built with React, TypeScript, Vi
 - An open landing-page layout with fine dividers, an animated SVG crew, and working internal footer navigation.
 - A conversational app led by Quil, with Pip (scouting), Milo (research), Iris (review) and Wren (writing).
 - Tiny original SVG characters walk between positions, exchange observations and react to the current example phase. No emoji, sprite-sheet download or generated image is used.
-- Plain-language input, teammate introductions, a timed example mission, pause/resume, inline evidence and editable drafts.
+- Plain-language input and teammate introductions. Each timed example mission updates five colour-matched contributions in a connected layout, converging into one shared result rather than a long stream of status messages.
+- Pause/resume, one primary opportunity, expandable reasons for the businesses set aside, inline evidence and editable drafts.
 - Browser-local saved prospects, CSV export, clipboard copying and keyboard-accessible saved/about panels.
 
 **All example businesses, sources and agent messages are fictional fixtures. No model inference, live business search or outreach occurs.** Mascot activity follows the local example state machine. It is not a live Mozaik execution trace.

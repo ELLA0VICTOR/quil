@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent, KeyboardEvent } from "react";
+import type { CSSProperties, FormEvent, KeyboardEvent, ReactNode } from "react";
 import { Brand, Sheet } from "../components/Shared";
 import { Icon } from "../components/Icon";
 import AgentSprite from "../components/AgentSprite";
 import CrewScene from "../components/CrewScene";
+import CrewExchange from "../components/CrewExchange";
 import { crew, phaseMessages, phaseOrder } from "../data/crew";
 import type { AgentId, MissionPhase } from "../data/crew";
 import { exampleProspects } from "../data/example";
@@ -14,6 +15,8 @@ type Message = {
   speaker: AgentId | "you";
   text: string;
   results?: boolean;
+  missionId?: number;
+  phase?: MissionPhase;
 };
 type Panel = "saved" | "about" | null;
 
@@ -22,11 +25,15 @@ function ProspectEntry({
   saved,
   onSave,
   notify,
+  answer = false,
+  children,
 }: {
   prospect: Prospect;
   saved: boolean;
   onSave: () => void;
   notify: (text: string) => void;
+  answer?: boolean;
+  children?: ReactNode;
 }) {
   const [view, setView] = useState<"none" | "evidence" | "draft">("none"),
     [draft, setDraft] = useState(prospect.draft);
@@ -40,43 +47,63 @@ function ProspectEntry({
   };
   return (
     <article
-      className={`lead-entry${view !== "none" ? " lead-entry-open" : ""}`}
+      className={`lead-entry${answer ? " lead-answer" : ""}${view !== "none" ? " lead-entry-open" : ""}`}
     >
-      <div className="lead-entry-top">
-        <span
-          className={`lead-signal ${prospect.status === "Opportunity" ? "signal-good" : prospect.status === "Website found" ? "signal-ruled-out" : "signal-uncertain"}`}
-        />
-        <button
-          className="lead-name-button"
-          onClick={() => setView(view === "evidence" ? "none" : "evidence")}
-          aria-expanded={view === "evidence"}
-        >
-          {prospect.name}
-          <Icon name="arrow-up" size={14} />
-        </button>
-        <span className="lead-decision">
-          {prospect.status === "Opportunity"
-            ? "Worth a hello"
-            : prospect.status === "Website found"
-              ? "Ruled out"
-              : "Check again"}
-        </span>
-        <button
-          className={`icon-button lead-save${saved ? " is-saved" : ""}`}
-          onClick={onSave}
-          aria-label={`${saved ? "Unsave" : "Save"} ${prospect.name}`}
-          aria-pressed={saved}
-        >
-          <Icon name={saved ? "check" : "bookmark"} size={15} />
-        </button>
-      </div>
-      <p className="lead-one-line">
-        {prospect.status === "Opportunity"
-          ? "Takes booking enquiries through a social profile."
-          : prospect.status === "Website found"
-            ? "A follow-up found a website. The original pitch was withdrawn."
-            : "The example site check timed out. Needs another look."}
-      </p>
+      {answer ? (
+        <div className="answer-prose">
+          <p>
+            For this example, I’d start with{" "}
+            <button
+              className="lead-name-button"
+              onClick={() => setView(view === "evidence" ? "none" : "evidence")}
+              aria-expanded={view === "evidence"}
+            >
+              {prospect.name}
+            </button>
+            . Customers enquire through its social profile, so a simple booking
+            website could make the next step easier.
+          </p>
+          {children}
+        </div>
+      ) : (
+        <>
+          <div className="lead-entry-top">
+            <span
+              className={`lead-signal ${prospect.status === "Opportunity" ? "signal-good" : prospect.status === "Website found" ? "signal-ruled-out" : "signal-uncertain"}`}
+            />
+            <button
+              className="lead-name-button"
+              onClick={() => setView(view === "evidence" ? "none" : "evidence")}
+              aria-expanded={view === "evidence"}
+            >
+              {prospect.name}
+              <Icon name="arrow-up" size={14} />
+            </button>
+            <span className="lead-decision">
+              {prospect.status === "Opportunity"
+                ? "Worth a hello"
+                : prospect.status === "Website found"
+                  ? "Ruled out"
+                  : "Check again"}
+            </span>
+            <button
+              className={`icon-button lead-save${saved ? " is-saved" : ""}`}
+              onClick={onSave}
+              aria-label={`${saved ? "Unsave" : "Save"} ${prospect.name}`}
+              aria-pressed={saved}
+            >
+              <Icon name={saved ? "check" : "bookmark"} size={15} />
+            </button>
+          </div>
+          <p className="lead-one-line">
+            {prospect.status === "Opportunity"
+              ? "Takes booking enquiries through a social profile."
+              : prospect.status === "Website found"
+                ? "A follow-up found a website. The original pitch was withdrawn."
+                : "The example site check timed out. Needs another look."}
+          </p>
+        </>
+      )}
       <div className="lead-entry-links">
         <button
           onClick={() => setView(view === "evidence" ? "none" : "evidence")}
@@ -89,7 +116,18 @@ function ProspectEntry({
             onClick={() => setView(view === "draft" ? "none" : "draft")}
             aria-expanded={view === "draft"}
           >
-            <Icon name="feather" size={12} /> Read Wren’s introduction
+            <Icon name="feather" size={12} /> Introduction
+          </button>
+        )}
+        {answer && (
+          <button
+            className={`lead-save${saved ? " is-saved" : ""}`}
+            onClick={onSave}
+            aria-label={`${saved ? "Unsave" : "Save"} ${prospect.name}`}
+            aria-pressed={saved}
+          >
+            <Icon name={saved ? "check" : "bookmark"} size={13} />
+            {saved ? "Saved" : "Save"}
           </button>
         )}
       </div>
@@ -156,6 +194,8 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     }
   });
   const messageId = useRef(0),
+    missionId = useRef(0),
+    activeMission = useRef<number | null>(null),
     timers = useRef<ReturnType<typeof setTimeout>[]>([]),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     step = useRef(0),
@@ -177,18 +217,44 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
   );
   useEffect(() => {
     const element = feed.current;
-    if (element)
-      element.scrollTo({
-        top: messages.length ? element.scrollHeight : 0,
-        behavior:
-          !messages.length ||
-          matchMedia("(prefers-reduced-motion: reduce)").matches
-            ? "instant"
-            : "smooth",
-      });
+    if (!element) return;
+    const latest = messages.at(-1);
+    // Updates replace each agent's contribution. Do not chase every update down
+    // the page; bring the shared answer into view only when it is ready.
+    if (latest?.missionId !== undefined) {
+      const exchange = element.querySelector(
+        `[data-mission-id="${latest.missionId}"]`,
+      );
+      if (latest.phase !== "planning" && !latest.results) return;
+      const target = latest.results
+        ? exchange?.querySelector(".shared-outcome")
+        : exchange;
+      if (target)
+        element.scrollTo({
+          top:
+            element.scrollTop +
+            target.getBoundingClientRect().top -
+            element.getBoundingClientRect().top -
+            (latest.results ? 80 : 20),
+          behavior: "instant",
+        });
+      return;
+    }
+    element.scrollTo({
+      top: messages.length ? element.scrollHeight : 0,
+      behavior:
+        !messages.length ||
+        matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+    });
   }, [messages]);
-  const push = (speaker: Message["speaker"], text: string, results = false) => {
-    const next = { id: ++messageId.current, speaker, text, results };
+  const push = (
+    speaker: Message["speaker"],
+    text: string,
+    options: Pick<Message, "results" | "missionId" | "phase"> = {},
+  ) => {
+    const next = { id: ++messageId.current, speaker, text, ...options };
     setMessages((current) => [...current.slice(-70), next]);
   };
   const notify = (text: string) => {
@@ -204,7 +270,11 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     step.current = index;
     setPhase(phaseOrder[index]);
     const message = phaseMessages[index];
-    push(message.speaker, message.text, message.kind === "results");
+    push(message.speaker, message.text, {
+      results: message.kind === "results",
+      missionId: activeMission.current ?? undefined,
+      phase: phaseOrder[index],
+    });
     if (index === phaseOrder.length - 1) setRunning(false);
   };
   const schedule = (from = 0) => {
@@ -222,21 +292,18 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
   ) => {
     stopTimers();
     setOnlyOpportunities(false);
-    push("you", request);
-    push(
-      "quil",
-      "For this local preview, we’ll use fictional cleaning businesses in Manchester. You can watch the crew work through an example together.",
-    );
+    activeMission.current = ++missionId.current;
+    push("you", request, { missionId: activeMission.current });
     schedule();
   };
   const pause = () => {
     stopTimers();
     setRunning(false);
     setPhase("paused");
-    push(
-      "quil",
-      "Paused. We can pick up where we left off whenever you’re ready.",
-    );
+    push("quil", "Paused. We can pick up here.", {
+      missionId: activeMission.current ?? undefined,
+      phase: "paused",
+    });
   };
   const reset = () => {
     stopTimers();
@@ -245,6 +312,8 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     setMessages([]);
     setInput("");
     setOnlyOpportunities(false);
+    activeMission.current = null;
+    if (composer.current) composer.current.style.height = "auto";
     composer.current?.focus();
   };
   const meet = (id: AgentId) => {
@@ -296,8 +365,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       setOnlyOpportunities(true);
       push(
         "quil",
-        "I’ll keep the strongest example opportunity in view.",
-        true,
+        "Kept Fern in the shared result. The other two are set aside.",
       );
       return;
     }
@@ -355,6 +423,24 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     notify("Saved examples exported.");
   };
+  const items: (
+    | { kind: "message"; message: Message }
+    | { kind: "mission"; id: number; messages: Message[] }
+  )[] = [];
+  const grouped = new Map<number, Message[]>();
+  for (const message of messages) {
+    if (message.missionId === undefined) {
+      items.push({ kind: "message", message });
+    } else {
+      let group = grouped.get(message.missionId);
+      if (!group) {
+        group = [];
+        grouped.set(message.missionId, group);
+        items.push({ kind: "mission", id: message.missionId, messages: group });
+      }
+      group.push(message);
+    }
+  }
   return (
     <div className="crew-room">
       <header className="room-header">
@@ -379,7 +465,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         </div>
       </header>
       <main
-        className={`room-main${messages.length ? " has-conversation" : ""}`}
+        className={`room-main${messages.length ? " has-conversation" : ""}${grouped.size ? " has-mission" : ""}`}
         id="room-content"
         tabIndex={-1}
       >
@@ -426,12 +512,84 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
             </div>
           ) : (
             <div className="conversation-messages">
-              {messages.map((message) => {
+              {items.map((item) => {
+                if (item.kind === "mission") {
+                  const updates = item.messages.filter(
+                    (message) => message.phase && message.phase !== "paused",
+                  );
+                  const latest = item.messages.at(-1);
+                  const complete = item.messages.some(
+                    (message) => message.results,
+                  );
+                  const notes: Partial<Record<AgentId, string>> = {};
+                  for (const update of updates) {
+                    if (update.speaker !== "you")
+                      notes[update.speaker] = update.text;
+                  }
+                  const prospects = exampleProspects.filter(
+                    (p) => !onlyOpportunities || p.status === "Opportunity",
+                  );
+                  const entry = (prospect: Prospect) => (
+                    <ProspectEntry
+                      key={prospect.id}
+                      prospect={prospect}
+                      saved={saved.includes(prospect.id)}
+                      onSave={() => toggleSave(prospect.id)}
+                      notify={notify}
+                      answer={prospect.status === "Opportunity"}
+                    >
+                      {prospect.status === "Opportunity" &&
+                        !onlyOpportunities && (
+                          <p>
+                            Clearwell needs another check after a timeout.
+                            Sunday already has a website, so we’ve set it aside.
+                          </p>
+                        )}
+                    </ProspectEntry>
+                  );
+                  return (
+                    <CrewExchange
+                      key={`mission-${item.id}`}
+                      id={item.id}
+                      request={
+                        item.messages.find(
+                          (message) => message.speaker === "you",
+                        )?.text ?? "Find local businesses."
+                      }
+                      phase={latest?.phase ?? "planning"}
+                      notes={notes}
+                      complete={complete}
+                    >
+                      <div className="conversation-results">
+                        <span className="results-note sr-only">
+                          FICTIONAL BUSINESSES · MANCHESTER
+                        </span>
+                        {prospects
+                          .filter((p) => p.status === "Opportunity")
+                          .map(entry)}
+                        {!onlyOpportunities && (
+                          <details className="reviewed-others">
+                            <summary>Review the other business checks</summary>
+                            {prospects
+                              .filter((p) => p.status !== "Opportunity")
+                              .map(entry)}
+                          </details>
+                        )}
+                      </div>
+                    </CrewExchange>
+                  );
+                }
+                const message = item.message;
                 const person = crew.find((p) => p.id === message.speaker);
                 return (
                   <div
                     className={`chat-message ${message.speaker === "you" ? "message-you" : "message-crew"}`}
                     key={message.id}
+                    style={
+                      person
+                        ? ({ "--voice": person.color } as CSSProperties)
+                        : undefined
+                    }
                   >
                     {person && (
                       <div className="message-sprite">
@@ -447,50 +605,10 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
                         {person && <i>{person.role.toLowerCase()}</i>}
                       </span>
                       <p>{message.text}</p>
-                      {message.results && (
-                        <div className="conversation-results">
-                          <span className="results-note">
-                            FICTIONAL BUSINESSES · MANCHESTER
-                          </span>
-                          {exampleProspects
-                            .filter(
-                              (p) =>
-                                !onlyOpportunities ||
-                                p.status === "Opportunity",
-                            )
-                            .map((prospect) => (
-                              <ProspectEntry
-                                key={prospect.id}
-                                prospect={prospect}
-                                saved={saved.includes(prospect.id)}
-                                onSave={() => toggleSave(prospect.id)}
-                                notify={notify}
-                              />
-                            ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
               })}
-              {running && (
-                <div className="crew-typing" aria-label="The crew is working">
-                  <span />
-                  <span />
-                  <span />
-                  <span>
-                    {phase === "discovering"
-                      ? "Pip is looking around"
-                      : phase === "investigating"
-                        ? "Milo and Iris are comparing notes"
-                        : phase === "reviewing"
-                          ? "Iris is checking a detail"
-                          : phase === "writing"
-                            ? "Wren is finding the words"
-                            : "Quil is getting everyone together"}
-                  </span>
-                </div>
-              )}
             </div>
           )}
         </div>

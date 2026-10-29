@@ -1,5 +1,6 @@
 @import "./styles/crew.css";
 @import "./styles/room.css";
+@import "./styles/exchange.css";
 
 .button {
   display: inline-flex;

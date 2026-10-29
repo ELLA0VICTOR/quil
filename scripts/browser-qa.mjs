@@ -260,7 +260,39 @@ try {
   const mission = await evaluate(
     `({phase:document.querySelector('.crew-scene-room').dataset.phase,leads:document.querySelectorAll('.conversation-results .lead-entry').length,review:document.querySelector('.conversation-messages').textContent.includes('withdrawn'),exampleLabel:document.querySelector('.results-note').textContent.includes('FICTIONAL')})`,
   );
+  const exchange = await evaluate(`(()=>{
+    const nodes=[...document.querySelectorAll('.agent-contribution')];
+    const rects=nodes.map(node=>node.getBoundingClientRect());
+    const map=document.querySelector('.collaboration-map').getBoundingClientRect();
+    const colors=nodes.map(node=>getComputedStyle(node.querySelector('p')).color);
+    return {
+      rounds:document.querySelectorAll('.crew-exchange').length,
+      agents:nodes.length,
+      branches:document.querySelectorAll('.collaboration-lines > g').length,
+      distinctVoices:new Set(colors).size,
+      coloredReplies:nodes.every(node=>getComputedStyle(node).color===getComputedStyle(node.querySelector('p')).color),
+      separatePositions:rects.every((a,i)=>rects.every((b,j)=>i===j||a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top)),
+      nodesFit:rects.every(r=>r.left>=map.left-1&&r.right<=map.right+1),
+      sharedAnswers:document.querySelectorAll('.shared-outcome').length,
+      primaryLeads:document.querySelectorAll('.conversation-results > .lead-entry').length,
+      detailsClosed:!document.querySelector('.reviewed-others').open,
+      resultVisible:document.querySelector('.shared-outcome').getBoundingClientRect().top>=document.querySelector('.room-conversation').getBoundingClientRect().top,
+      duplicateCrewHidden:getComputedStyle(document.querySelector('.room-crew-area')).display==='none'
+      ,singleResponse:!document.querySelector('.outcome-summary')&&!document.querySelector('.lead-answer .lead-entry-top')&&!!document.querySelector('.answer-prose')
+      ,unifiedAnswerColor:new Set([...document.querySelectorAll('.shared-outcome p,.shared-outcome span,.shared-outcome button,.shared-outcome h2,.shared-outcome summary')].map(el=>getComputedStyle(el).color)).size===1
+    };
+  })()`);
   await screenshot("17-conversation-results");
+  await evaluate(
+    "(()=>{const feed=document.querySelector('.room-conversation');const exchange=document.querySelector('.crew-exchange');feed.scrollTo({top:feed.scrollTop+exchange.getBoundingClientRect().top-feed.getBoundingClientRect().top-20,behavior:'instant'})})()",
+  );
+  await wait(200);
+  await screenshot("51-combined-crew-desktop");
+  await click(".reviewed-others summary");
+  const reviewedOthers = await evaluate(
+    "document.querySelector('.reviewed-others').open&&document.querySelectorAll('.reviewed-others .lead-entry').length===2",
+  );
+  await click(".reviewed-others summary");
   await click(".lead-entry .lead-save");
   await click(".lead-entry-links button:first-child");
   const evidence = await evaluate(
@@ -303,6 +335,14 @@ try {
     `({overflow:document.documentElement.scrollWidth>innerWidth,composer:document.querySelector('.chat-composer').getBoundingClientRect().bottom<=innerHeight,agents:document.querySelectorAll('.room-crew-area .crew-member').length})`,
   );
   await screenshot("19-mobile-conversation");
+  await evaluate(
+    "(()=>{const feed=document.querySelector('.room-conversation');const exchange=document.querySelector('.crew-exchange');feed.scrollTo({top:feed.scrollTop+exchange.getBoundingClientRect().top-feed.getBoundingClientRect().top-16,behavior:'instant'})})()",
+  );
+  await wait(200);
+  const mobileExchange = await evaluate(
+    `(()=>{const map=document.querySelector('.collaboration-map').getBoundingClientRect();return {agents:document.querySelectorAll('.agent-contribution').length,overflow:document.documentElement.scrollWidth>innerWidth,nodesFit:[...document.querySelectorAll('.agent-contribution')].every(n=>{const r=n.getBoundingClientRect();return r.left>=map.left-1&&r.right<=map.right+1})}})()`,
+  );
+  await screenshot("52-combined-crew-mobile");
   await click(".room-header .icon-button");
   await wait(100);
   await screenshot("20-mobile-welcome");
@@ -334,6 +374,9 @@ try {
     discovering,
     paused,
     mission,
+    exchange,
+    reviewedOthers,
+    mobileExchange,
     evidence,
     draft,
     saved,
@@ -379,6 +422,24 @@ try {
     mission.leads !== 3 ||
     !mission.review ||
     !mission.exampleLabel ||
+    exchange.rounds !== 1 ||
+    exchange.agents !== 5 ||
+    exchange.branches !== 5 ||
+    exchange.distinctVoices !== 5 ||
+    !exchange.coloredReplies ||
+    !exchange.separatePositions ||
+    !exchange.nodesFit ||
+    exchange.sharedAnswers !== 1 ||
+    exchange.primaryLeads !== 1 ||
+    !exchange.detailsClosed ||
+    !exchange.resultVisible ||
+    !exchange.duplicateCrewHidden ||
+    !exchange.singleResponse ||
+    !exchange.unifiedAnswerColor ||
+    !reviewedOthers ||
+    mobileExchange.agents !== 5 ||
+    mobileExchange.overflow ||
+    !mobileExchange.nodesFit ||
     evidence !== 3 ||
     !draft ||
     saved !== 1 ||

@@ -1,0 +1,325 @@
+.room-main.has-mission {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.has-mission .room-crew-area {
+  display: none;
+}
+.has-mission .room-conversation {
+  max-width: 850px;
+  padding-top: 24px;
+}
+.crew-exchange {
+  padding-bottom: 20px;
+  animation: fade-up 0.4s ease;
+}
+.exchange-brief {
+  padding-left: 16px;
+  border-left: 2px solid #8ab9fb80;
+  margin: 0 auto;
+  max-width: 700px;
+}
+.exchange-brief > span {
+  color: #93b4dc;
+  font-size: 11px;
+}
+.exchange-brief > p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #e0ebfc;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.exchange-example {
+  max-width: 700px;
+  margin: 12px auto 26px;
+  padding-left: 18px;
+  color: #8794a9;
+  font-size: 10px;
+}
+.collaboration-map {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: clamp(38px, 10vw, 100px);
+  row-gap: 24px;
+  padding-bottom: 45px;
+  position: relative;
+  max-width: 700px;
+  margin: 0 auto;
+  isolation: isolate;
+}
+.collaboration-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  overflow: visible;
+}
+.collaboration-lines path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.24;
+}
+.collaboration-lines circle {
+  fill: currentColor;
+  opacity: 0.65;
+}
+.collaboration-lines .connection-working > path:first-child {
+  opacity: 0.4;
+}
+.collaboration-lines .connection-signal {
+  opacity: 0.85;
+  stroke-dasharray: 3 16;
+  animation: passing-notes 2.7s linear infinite;
+}
+.agent-contribution {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 0;
+  color: var(--voice);
+}
+.agent-contribution > .agent-sprite {
+  width: 40px;
+  flex-shrink: 0;
+}
+.agent-contribution > div {
+  flex: 1;
+  min-width: 0;
+}
+.contribution-quil {
+  grid-column: 1 / -1;
+  max-width: 265px;
+  justify-self: center;
+}
+.contribution-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.8;
+}
+.contribution-name > svg {
+  opacity: 0.65;
+}
+.agent-contribution p {
+  font-size: 13px;
+  line-height: 1.7;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.agent-contribution[data-state="waiting"] p {
+  opacity: 0.78;
+}
+.contribution-pulse {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: typing-pulse 1.6s infinite;
+}
+.collaboration-joint {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 21px;
+  width: 21px;
+  display: grid;
+  place-items: center;
+  color: #a3b8d5;
+  background: #080d16;
+}
+.exchange-complete .collaboration-joint {
+  color: #ffffff;
+}
+.exchange-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+  color: #94a8c3;
+  font-size: 11px;
+  margin-top: 15px;
+}
+.progress-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.progress-dots > i {
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: typing-pulse 1.8s infinite;
+}
+.progress-dots > i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.progress-dots > i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.shared-outcome {
+  --answer-color: #ffffff;
+  color: var(--answer-color);
+  margin: 18px auto 0;
+  max-width: 700px;
+  padding-top: 20px;
+  border-top: 1px solid #ffffff2b;
+}
+.outcome-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 11px;
+  color: var(--answer-color);
+}
+.outcome-heading h2 {
+  font: 500 12px/1.8 var(--body);
+  letter-spacing: 0;
+}
+.shared-outcome .conversation-results {
+  margin-top: 14px;
+}
+.shared-outcome .lead-one-line {
+  font-size: 12px;
+  margin-top: 7px;
+}
+.shared-outcome .lead-entry-links {
+  margin-top: 10px;
+}
+.shared-outcome .lead-entry {
+  padding-block: 17px;
+}
+.shared-outcome .lead-answer {
+  padding: 0;
+  border: 0;
+}
+.answer-prose > p {
+  font-size: 15px;
+  line-height: 1.95;
+  overflow-wrap: anywhere;
+}
+.answer-prose > p + p {
+  margin-top: 14px;
+}
+.answer-prose .lead-name-button {
+  display: inline;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: #ffffff50;
+  text-underline-offset: 4px;
+}
+.answer-prose .lead-name-button:hover {
+  text-decoration-color: currentColor;
+}
+.shared-outcome .lead-answer .lead-entry-links {
+  margin: 18px 0 0;
+  gap: 23px;
+}
+.shared-outcome .lead-answer .lead-save {
+  width: auto;
+  height: auto;
+  background: none;
+}
+.shared-outcome
+  .conversation-results
+  :is(p, span, button, svg, h4, textarea, summary),
+.shared-outcome .conversation-results :is(button, summary):hover {
+  color: var(--answer-color);
+}
+.shared-outcome .lead-signal {
+  background: var(--answer-color);
+  box-shadow: none;
+}
+.shared-outcome .lead-entry {
+  border-color: #ffffff21;
+}
+.shared-outcome .lead-introduction > textarea {
+  border-color: #ffffff40;
+}
+.shared-outcome .lead-evidence,
+.shared-outcome .lead-introduction {
+  padding-left: 0;
+}
+.reviewed-others {
+  margin-top: 10px;
+}
+.reviewed-others > summary {
+  font-size: 11px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.reviewed-others > summary:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.message-crew .message-content {
+  border-color: color-mix(in srgb, var(--voice, #8fb6ea) 30%, transparent);
+}
+.message-crew .message-content > p {
+  color: var(--voice, #d9e3f0);
+}
+@keyframes passing-notes {
+  to {
+    stroke-dashoffset: -76;
+  }
+}
+@media (max-width: 600px) {
+  .has-mission .room-conversation {
+    padding: 18px 3px 12px;
+  }
+  .exchange-brief > p {
+    font-size: 13px;
+  }
+  .exchange-example {
+    font-size: 10px;
+    margin-bottom: 22px;
+  }
+  .collaboration-map {
+    column-gap: 33px;
+    row-gap: 22px;
+    padding-bottom: 37px;
+  }
+  .agent-contribution {
+    gap: 7px;
+  }
+  .agent-contribution > .agent-sprite {
+    width: 29px;
+  }
+  .contribution-quil {
+    max-width: 215px;
+  }
+  .contribution-name {
+    font-size: 12px;
+    gap: 6px;
+  }
+  .agent-contribution p {
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .exchange-progress {
+    font-size: 10px;
+  }
+  .outcome-heading {
+    gap: 8px;
+  }
+  .outcome-heading h2 {
+    font-size: 12px;
+  }
+  .answer-prose > p {
+    font-size: 13px;
+  }
+  .shared-outcome .lead-one-line {
+    font-size: 11px;
+  }
+  .shared-outcome .lead-entry-links {
+    gap: 16px;
+  }
+}

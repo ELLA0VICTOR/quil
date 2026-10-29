@@ -189,9 +189,9 @@
   color: #6b96cb;
 }
 .chat-composer {
-  border: 1px solid #9cbbe637;
+  border: 1px solid #8bb7eb60;
   border-radius: 22px;
-  background: linear-gradient(120deg, #17213375, #0e162580);
+  background: linear-gradient(120deg, #142941e6, #101b2af0);
   display: flex;
   align-items: center;
   gap: 13px;
@@ -205,8 +205,8 @@
   backdrop-filter: blur(12px);
 }
 .chat-composer:focus-within {
-  border-color: #8db8ef67;
-  background: linear-gradient(120deg, #1a29407a, #0e182980);
+  border-color: #9bc7ff9c;
+  background: linear-gradient(120deg, #193350ed, #122238f2);
 }
 .chat-composer > svg {
   color: #87a8d3;
@@ -224,7 +224,7 @@
   width: 100%;
   min-height: 24px;
   max-height: 110px;
-  color: #d5e3f5;
+  color: #e3efff;
   font-size: 14px;
   line-height: 1.8;
   padding: 0;
@@ -233,7 +233,7 @@
   caret-color: #b9d8ff;
 }
 .chat-composer > textarea::placeholder {
-  color: #6f87a9;
+  color: #9aafca;
 }
 .composer-send {
   width: 33px;
@@ -330,16 +330,20 @@
 .message-author > i {
   font-style: normal;
   font-size: 10px;
-  color: #556e91;
+  color: #8c9fb9;
   font-weight: 400;
 }
 .message-content > p {
   font-size: 16px;
   line-height: 1.95;
-  color: #a1b5d0;
+  color: #d9e3f0;
   margin-top: 6px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.message-crew .message-content {
+  border-left: 1px solid #8fb6ea40;
+  padding: 2px 0 4px 14px;
 }
 .message-you {
   margin: 7px 0 28px;
@@ -348,15 +352,17 @@
   margin-left: auto;
   flex: 0 1 auto;
   max-width: 85%;
-  padding: 0 1px 0 20px;
+  padding: 8px 14px 10px 20px;
+  border-right: 2px solid #8ab9fb;
+  background: linear-gradient(270deg, #24416b55, transparent);
 }
 .message-you .message-author {
-  color: #7994b7;
+  color: #9ac6ff;
   justify-content: flex-end;
   font-size: 11px;
 }
 .message-you .message-content > p {
-  color: #d4e2f4;
+  color: #cce3ff;
   text-align: right;
   font-size: 16px;
 }
