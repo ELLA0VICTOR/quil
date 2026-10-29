@@ -1,0 +1,35 @@
+export type GoogleStatus = {
+  configured: boolean;
+  connected: boolean;
+  email?: string;
+  redirectUri: string;
+};
+export type OutreachAction = {
+  id: string;
+  runId: string;
+  candidateId: string;
+  kind: "email" | "follow_up" | "meeting";
+  state: "prepared" | "sending" | "sent" | "uncertain" | "failed" | "cancelled";
+  recipient: string;
+  subject: string;
+  text: string;
+  createdAt: string;
+  expiresAt: string;
+  threadId?: string;
+  messageId?: string;
+  parentId?: string;
+  followUpNumber?: number;
+  sentAt?: string;
+  receivedReply?: boolean;
+  lastReplyId?: string;
+  start?: string;
+  end?: string;
+  timeZone?: string;
+  eventId?: string;
+  calendarUrl?: string;
+  meetUrl?: string;
+  attendance?: "needsAction" | "accepted" | "declined" | "tentative";
+  error?: string;
+  sender?: string;
+  rfcMessageId?: string;
+};

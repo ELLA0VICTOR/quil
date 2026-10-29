@@ -15,6 +15,8 @@ The frontend is built with React, TypeScript, Vite and Three.js. A separate loca
 - Plain-language input and teammate introductions. Server events update five colour-matched contributions in a connected layout, converging into one shared result rather than a long stream of status messages.
 - Pause/resume, one primary opportunity, expandable reasons for the businesses set aside, inline evidence and editable drafts.
 - Browser-local saved prospects, CSV export with editable introductions and source records, clipboard copying and keyboard-accessible saved/about panels.
+- Editable tailored offers: source-based rationale, suggested scope, existing-site position, open commercial terms, follow-up drafts and a meeting agenda. Wren develops the angle/scope alongside the introduction within the same bounded model request.
+- Optional Gmail and Google Calendar connection for reviewed sends, reply-aware follow-ups, availability suggestions and invitations. Account setup is separate: [Google connection guide](docs/GOOGLE-SETUP.md).
 
 **The chat is connected to the backend.** `src/hooks/useCrewRuns.ts` consumes server events through `src/lib/api.ts`; agent activity, corrections, sources, introductions and the single final answer come from the run. There is no timed frontend mission script or local sample-data fallback. Default fixture mode still uses fictional records without paid inference.
 
@@ -62,17 +64,19 @@ Mozaik is pinned to **4.2.0-beta.18**. This published package uses `defineRuntim
 ```mermaid
 flowchart TD
   Brief[Your brief] --> Pip[Pip: discover]
-  Pip --> Milo[Milo: research]
+  Pip --> Milo[Milo: business / website investigation]
   Pip --> Iris[Iris: independent review]
+  Milo --> Recheck[Iris: reconcile website evidence]
+  Iris --> Recheck
   Milo --> Wren[Wren: provisional draft]
-  Iris --> Review{Evidence changed?}
+  Recheck --> Review{Evidence changed?}
   Review -->|yes: discard unsupported draft| Wren
   Review -->|review ready| Join[Reviewed draft only]
   Wren --> Join
   Join --> Quil[Quil: one combined answer]
 ```
 
-Milo and Iris start from the same Mozaik message and run independently. In live mode Wren prepares locally while the review runs, then spends a model call only on approved leads. Fixture mode deliberately creates a provisional draft so the correction is visible. If Iris finds contrary evidence, shared state removes unsupported provisional drafts and only Wren revises. Quil cannot publish the outcome until review and the current draft revision agree. Provisional drafts never appear in the final result.
+Milo and Iris start from the same Mozaik message and run independently. Milo checks the listed website while Iris checks independent search records. Iris runs another real agent loop when both results are available, so a late booking link can change the decision. In live mode Wren prepares locally while review runs, then spends a model call only on approved leads. Fixture mode deliberately creates a provisional draft so the correction is visible. Contrary evidence removes unsupported provisional drafts and only Wren revises. Quil cannot publish until review and the current offer revision agree. Provisional drafts never appear in the final result.
 
 Fixture mode runs these **real Mozaik loops against fictional data**, without model or search calls. It does not claim live AI inference. [The recorded fixture trace](docs/fixture-trace.json) contains actual start/finish times, loop transitions, research/review overlap and the correction. Regenerate it using `npm run demo:api -- --save-trace`.
 
@@ -119,7 +123,7 @@ Default safeguards:
 
 `.quil-data/` holds the ignored ledger and traces. Deleting it also deletes application spending history, so do not delete it to resolve a request failure. API run tokens and local origin checks are for local development; public hosting requires an appropriate user-access layer first.
 
-Search snippets are not website uptime checks. Missing website fields remain unknown. A matching website reference prevents a missing-website pitch. An existing website can still have a manual-booking opportunity, but only an explicit, location-matched instruction supports that suggestion. Online-booking links or contrary records keep the result inconclusive. Social profiles alone never prove a missing website. Sources and retrieval times accompany decisions. Source IDs include the observation, so another search cannot overwrite an earlier snippet. Introductions quote the supporting record; an ungrounded model draft is replaced locally without a paid retry, with the correction recorded in the trace. No email, message or payment is sent.
+Search snippets are not website uptime checks. Missing website fields remain unknown. A matching website reference prevents a missing-website pitch. An existing website can still have a manual-booking opportunity, but only an explicit, location-matched instruction supports that suggestion. Online-booking links or contrary records keep the result inconclusive. Social profiles alone never prove a missing website. Sources and retrieval times accompany decisions. Source IDs include the observation, so another search cannot overwrite an earlier snippet. Milo also reads a bounded HTML page from a listed standalone website: public DNS/IP checks, address pinning, redirect validation, no scripts/images, and partial-page reporting. A returned page is not proof of full functionality or ownership. Introductions quote the supporting record; an ungrounded model draft is replaced locally without a paid retry, with the correction recorded in the trace. Nothing is sent without an approved outreach preview. The optional Gmail/Calendar integration is described below; payments are not implemented.
 
 ### Backend verification
 
@@ -158,3 +162,13 @@ The full browser suite refuses to run against a live-mode backend to prevent acc
 - React and Vite are retained from the supplied starter.
 
 Quil's original code is MIT licensed; third-party assets retain their licenses.
+
+## Offers, contact, follow-up and meetings
+
+Use **Tailored offer** below an approved finding to edit the rationale, scope and terms. Commercial fees, deadlines and outcomes are not invented. The proposal, source records and edited introduction can be saved/exported. Older approved results can derive a proposal from saved facts without paying for another run.
+
+**Contact & next steps** prepares a message or calendar invitation for explicit approval. [Connect your Google account](docs/GOOGLE-SETUP.md) through the envelope in the header. You enter a checked recipient; public website mail links can help, but Quil does not infer the owner's identity. Follow-ups are prepared for day 3 and day 7, checked against the created Gmail thread, and stopped if a reply arrives. There is no unattended campaign scheduler. Calendar suggestions use your free weekday times; the business's availability still needs agreement. An invitation is not labelled accepted until Google reports the attendee's response.
+
+Google credentials stay server-side and tokens are encrypted in the ignored local store. Approval previews are persisted, expire after 30 minutes, claim execution atomically and never automatically resend an uncertain request. Wren's preparation and Quil's execution/status checks run through actual Mozaik agent loops in `server/crew-action.ts`, without additional model inference. Fictional examples and withdrawn leads cannot send. `server/tests/outreach.test.ts` tests Google operations using injected transports, including reply races, duplicate clicks, calendar conflicts and receipt recovery. A separate browser check exercised the connected preview/send/invitation screens with mocked Google responses. Actual account authorization and a live send to an explicitly approved test recipient are still pending.
+
+Integration routes: `GET /api/google/status`, `POST /api/google/connect`, `GET /api/google/callback`, `POST /api/google/disconnect`, `GET /api/outreach`, `POST /api/outreach/prepare`, `POST /api/outreach/slots`, and `POST /api/outreach/:id/approve|sync|cancel`. Writes require the local owner cookie, an allowed Origin and the review header. This is a single-owner local app; public hosting requires per-user credential/session isolation.

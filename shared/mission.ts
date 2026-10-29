@@ -24,7 +24,7 @@ export type Source = {
   observation: string;
   observedAt: string;
   fictional: boolean;
-  kind?: "search_snippet" | "website_reference" | "fixture";
+  kind?: "search_snippet" | "website_reference" | "website_page" | "fixture";
 };
 export type Candidate = {
   id: string;
@@ -44,7 +44,24 @@ export type Decision = {
   sourceIds: string[];
   evidenceQuote?: string;
 };
-export type Draft = { candidateId: string; text: string; sourceIds: string[] };
+export type WebsiteCheck = {
+  candidateId: string;
+  url: string | null;
+  status: "reachable" | "unreachable" | "inconclusive" | "not_listed";
+  checkedAt: string;
+  httpStatus?: number;
+  bookingLinks: string[];
+  contactEmails?: string[];
+  reason: string;
+};
+export type Draft = {
+  candidateId: string;
+  text: string;
+  sourceIds: string[];
+  offer?: string;
+  followUps?: { afterDays: number; text: string }[];
+  meetingAgenda?: string[];
+};
 export type Outcome = {
   text: string;
   candidates: Candidate[];
@@ -52,6 +69,7 @@ export type Outcome = {
   decisions: Decision[];
   drafts: Draft[];
   sources: Source[];
+  websiteChecks?: WebsiteCheck[];
 };
 export type RunEvent = {
   id: number;

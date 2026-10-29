@@ -26,6 +26,10 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
     enableLive: env.QUIL_ENABLE_LIVE === "true",
     openaiKey: env.OPENAI_API_KEY ?? "",
     searchKey: env.SERPER_API_KEY ?? "",
+    googleClientId: env.GOOGLE_CLIENT_ID ?? "",
+    googleClientSecret: env.GOOGLE_CLIENT_SECRET ?? "",
+    googleRedirectUri:
+      env.GOOGLE_REDIRECT_URI ?? "http://127.0.0.1:8787/api/google/callback",
     model: "gpt-6-luna",
     // Nano-dollars avoid floating-point rounding in concurrent reservations.
     totalBudget: Math.floor(

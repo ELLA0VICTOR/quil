@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Icon } from "./Icon";
 import type { Prospect } from "../lib/run-view";
 import { safeSourceUrl } from "../lib/run-view";
+import OutreachPanel from "./OutreachPanel";
 export default function ProspectEntry({
   prospect,
   saved,
@@ -10,6 +11,7 @@ export default function ProspectEntry({
   answer = false,
   answerText,
   onDraftChange,
+  onOfferChange,
 }: {
   prospect: Prospect;
   saved: boolean;
@@ -18,9 +20,13 @@ export default function ProspectEntry({
   answer?: boolean;
   answerText?: string;
   onDraftChange?: (draft: string) => void;
+  onOfferChange?: (offer: string) => void;
 }) {
-  const [view, setView] = useState<"none" | "evidence" | "draft">("none"),
+  const [view, setView] = useState<
+      "none" | "evidence" | "draft" | "offer" | "outreach"
+    >("none"),
     [draft, setDraft] = useState(prospect.draft);
+  const [offer, setOffer] = useState(prospect.offer ?? "");
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(draft);
@@ -60,7 +66,7 @@ export default function ProspectEntry({
             </span>
             <button
               className={`icon-button lead-save${saved ? " is-saved" : ""}`}
-              onClick={() => onSave({ ...prospect, draft })}
+              onClick={() => onSave({ ...prospect, draft, offer })}
               aria-label={`${saved ? "Unsave" : "Save"} ${prospect.name}`}
               aria-pressed={saved}
             >
@@ -85,10 +91,26 @@ export default function ProspectEntry({
             <Icon name="feather" size={12} /> Introduction
           </button>
         )}
+        {!!offer && (
+          <button
+            onClick={() => setView(view === "offer" ? "none" : "offer")}
+            aria-expanded={view === "offer"}
+          >
+            Tailored offer
+          </button>
+        )}
+        {!!prospect.draft && (
+          <button
+            onClick={() => setView(view === "outreach" ? "none" : "outreach")}
+            aria-expanded={view === "outreach"}
+          >
+            Contact & next steps
+          </button>
+        )}
         {answer && (
           <button
             className={`lead-save${saved ? " is-saved" : ""}`}
-            onClick={() => onSave({ ...prospect, draft })}
+            onClick={() => onSave({ ...prospect, draft, offer })}
             aria-label={`${saved ? "Unsave" : "Save"} ${prospect.name}`}
             aria-pressed={saved}
           >
@@ -121,7 +143,9 @@ export default function ProspectEntry({
                 {!source.fictional &&
                   Number.isFinite(Date.parse(source.observedAt)) && (
                     <small>
-                      Search record retrieved{" "}
+                      {source.kind === "website_page"
+                        ? "Website page checked "
+                        : "Search record retrieved "}
                       {new Date(source.observedAt).toLocaleString()}. This is
                       not the page's publication date.
                     </small>
@@ -155,6 +179,56 @@ export default function ProspectEntry({
           />
           <p>Yours to edit. Nothing is sent automatically.</p>
         </div>
+      )}
+      {view === "offer" && (
+        <div className="lead-introduction tailored-offer">
+          <div>
+            <span className="small-label">A PROPOSAL TO MAKE YOUR OWN</span>
+            <button
+              className="text-link"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(offer)
+                  .then(() => notify("Offer copied."))
+                  .catch(() =>
+                    notify("Select the offer text to copy it manually."),
+                  );
+              }}
+            >
+              <Icon name="copy" size={13} /> Copy
+            </button>
+          </div>
+          <textarea
+            aria-label={`Edit offer for ${prospect.name}`}
+            value={offer}
+            rows={18}
+            onChange={(event) => {
+              setOffer(event.target.value);
+              onOfferChange?.(event.target.value);
+            }}
+          />
+          <p>Review scope, pricing and timing before making a commitment.</p>
+          {!!prospect.followUps?.length && (
+            <details className="follow-up-drafts">
+              <summary>Follow-ups & meeting plan</summary>
+              {prospect.followUps.map((followUp) => (
+                <section key={followUp.afterDays}>
+                  <h4>Day {followUp.afterDays}, if unanswered</h4>
+                  <p>{followUp.text}</p>
+                </section>
+              ))}
+              <h4>Suggested meeting agenda</h4>
+              <ul>
+                {prospect.meetingAgenda?.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+      {view === "outreach" && (
+        <OutreachPanel prospect={{ ...prospect, offer }} draft={draft} />
       )}
     </article>
   );

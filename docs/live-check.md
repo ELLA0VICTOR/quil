@@ -25,3 +25,7 @@ The [final live run metadata](live-run-trace.json) records the corrected positiv
 A browser then restored this completed run and verified the exact server answer, exact editable introduction and original source link, with no additional run creation and no runtime errors. This validates a source-backed introduction, not buyer interest or a sales outcome. Injected-provider end-to-end tests additionally cover local correction of an ungrounded draft without an extra model request.
 
 Keys, run access tokens, raw provider responses and private run-session files remain excluded from the repository. The default environment template remains in free fixture mode. No deployment, outreach or advertising spend was performed.
+
+## Subsequent offer and Google integration
+
+The later extension adds direct bounded website reads, a second Iris review, editable offers and approval-based Gmail/Calendar actions. Its [verification record](outreach-check.md) distinguishes the 34 automated tests and mocked connected-browser checks from live Google delivery, which remains pending account authorization. No additional OpenAI or Serper requests were made for this extension.

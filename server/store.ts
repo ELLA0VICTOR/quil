@@ -20,6 +20,8 @@ export class Store {
       CREATE TABLE IF NOT EXISTS charges (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, provider TEXT NOT NULL, reserved INTEGER NOT NULL, charged INTEGER NOT NULL, state TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, expires INTEGER NOT NULL, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS server_lease (id INTEGER PRIMARY KEY CHECK(id=1), pid INTEGER NOT NULL, owner TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS integrations (name TEXT PRIMARY KEY, secret TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS outreach (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, candidate_id TEXT NOT NULL, state TEXT NOT NULL, record TEXT NOT NULL);
     `);
   }
   claimServer() {

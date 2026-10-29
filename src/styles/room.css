@@ -531,6 +531,154 @@
   margin-top: 8px;
   opacity: 0.7;
 }
+.room-connect-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: #b5c6dc;
+  cursor: pointer;
+}
+.room-connect-button:hover {
+  color: white;
+}
+.google-settings,
+.outreach-panel {
+  padding: 24px 0;
+  font-size: 13px;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+.google-settings h3,
+.outreach-panel h4 {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.google-settings p,
+.outreach-panel p {
+  margin: 12px 0;
+}
+.google-setup {
+  border-block: 1px solid #ffffff25;
+  margin: 20px 0;
+  padding: 12px 0 22px;
+}
+.google-setup code {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.outreach-compose,
+.outreach-preview,
+.outreach-history {
+  border-top: 1px solid #ffffff25;
+  padding-top: 22px;
+  margin-top: 22px;
+}
+.outreach-compose > label {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 18px;
+  font-size: 12px;
+}
+.outreach-compose input:not([type="checkbox"]),
+.outreach-compose textarea,
+.outreach-compose select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #ffffff36;
+  background: #111925;
+  border-radius: 8px;
+  padding: 11px 13px;
+  color: #f1f4f9;
+  font: inherit;
+  font-size: 13px;
+}
+.outreach-compose input[type="checkbox"] {
+  accent-color: #90c5ff;
+  width: 16px;
+  height: 16px;
+}
+.outreach-compose > .outreach-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+.outreach-panel .button,
+.google-settings .button {
+  font-size: 12px;
+  padding: 12px 16px;
+  min-height: 40px;
+}
+.outreach-panel button:disabled,
+.google-settings button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.outreach-preview > pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  border-block: 1px solid #ffffff25;
+  padding: 20px 0;
+  margin: 20px 0;
+}
+.outreach-preview > .text-link {
+  margin: 16px;
+}
+.outreach-error {
+  border-left: 2px solid #edb8a1;
+  padding-left: 13px;
+}
+.outreach-history > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #ffffff20;
+}
+.outreach-history strong {
+  font-weight: 500;
+}
+.outreach-history small {
+  flex-basis: 100%;
+}
+.outreach-history a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.meeting-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 12px 0 20px;
+}
+.follow-up-drafts {
+  margin-top: 24px;
+  border-top: 1px solid #ffffff25;
+  padding-top: 16px;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.follow-up-drafts summary {
+  cursor: pointer;
+}
+.follow-up-drafts section,
+.follow-up-drafts h4 {
+  margin-top: 16px;
+}
+.follow-up-drafts h4 {
+  font-weight: 500;
+}
+.follow-up-drafts ul {
+  padding-left: 20px;
+}
 .lead-introduction {
   padding: 25px 0 7px 13px;
   animation: fade-up 0.3s;

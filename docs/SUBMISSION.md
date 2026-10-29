@@ -26,10 +26,12 @@ The five roles run through `@mozaik-ai/core@4.2.0-beta.18`: runtime participants
 
 ## Limits and responsible use
 
-Quil currently supports website and booking-flow prospecting, with up to three businesses per search. It uses public search records rather than authenticated business systems or a complete website crawl. These records can be stale, and matching names and locations does not guarantee identity. Manual booking does not prove that the business wants a new system. The user reviews every introduction; Quil sends nothing automatically.
+Quil currently supports website and booking-flow prospecting, with up to three businesses per search. It uses public search records and bounded checks of listed website pages, rather than a complete website crawl or authenticated business systems. These records can be stale, and matching names and locations does not guarantee identity. Manual booking does not prove that the business wants a new system. The user reviews every introduction and offer. The optional Google connection can send an approved message, check for replies and create an approved meeting invitation. Fictional examples cannot send; there is no unattended campaign scheduler.
 
 The approved-introduction path is covered end to end by injected-provider tests and a recorded live-provider run using real cached discovery/research records and a new writing request. A browser verified the final answer, editable introduction and source link. Fresh live research/review overlap, exclusions and conflicting booking evidence are recorded separately. This proves a source-backed introduction, not customer demand or a sales result; fictional examples are labeled explicitly.
 
 Live requests have persistent, transactionally reserved cost limits. No automatic paid retries are performed. A free example remains available on a live-configured server. Keys and private run tokens stay outside the repository and browser bundle. Public multi-user hosting would require user authentication and per-user quotas; this submission is designed to run locally from the public source.
 
 MIT licensed. No video or public hosting is required for this track. No customer adoption, revenue or measured sales uplift is claimed.
+
+Optional outreach now has a [Google setup guide](GOOGLE-SETUP.md). Its adapters are tested with injected Google responses and the connected screens with mocked browser responses; live Google authorization and an approved test send remain pending. The free example demonstrates the editable offer and follow-up plan without needing a Google account.

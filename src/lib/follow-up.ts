@@ -17,6 +17,30 @@ export function followUp(
     )
   )
     return;
+  if (/\b(?:price|pricing|timeline|budget)\b/i.test(request))
+    return "Price, delivery timing and ongoing costs are left open until you agree the scope. Edit Tailored offer below the result before committing to any terms.";
+  if (/\b(?:offer|proposal|scope)\b/i.test(request)) {
+    const offers = outcome.drafts.flatMap((draft) =>
+      draft.offer ? [draft.offer] : [],
+    );
+    return offers.length
+      ? offers.join("\n\n") +
+          "\n\nUse Tailored offer below the result to edit and save it."
+      : "Open Tailored offer below the result to review the proposal prepared from the saved research. We only prepare an offer for a supported opportunity.";
+  }
+  if (/\bfollow[ -]?ups?\b/i.test(request)) {
+    const drafts = outcome.drafts.flatMap((draft) => draft.followUps ?? []);
+    return drafts.length
+      ? drafts
+          .map(
+            (draft) => `Day ${draft.afterDays}, if unanswered:\n${draft.text}`,
+          )
+          .join("\n\n") +
+          "\n\nContact & next steps checks the Gmail thread before you approve a due follow-up."
+      : "Follow-ups need an approved introduction first. Open Contact & next steps under a supported result.";
+  }
+  if (/\b(?:contact|send|meeting|calendar|invite|owner)\b/i.test(request))
+    return "Open Contact & next steps below the supported result. Connect Gmail and Calendar using the envelope in the header, enter a checked business email address, and prepare a preview. You approve the message or invitation before it goes out. For a meeting, choose the time discussed with the business; Quil checks your calendar and tracks the invitation response.";
   if (
     /\b(?:draft|introduction|message|email|write|outreach)\b/i.test(request)
   ) {

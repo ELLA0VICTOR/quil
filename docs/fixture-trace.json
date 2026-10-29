@@ -1,14 +1,14 @@
 {
   "description": "Actual Mozaik execution using fictional records and deterministic fixture providers. No paid inference or search.",
   "framework": "@mozaik-ai/core@4.2.0-beta.18",
-  "overlapMs": 70,
+  "overlapMs": 78,
   "modelCostUsd": 0,
   "searchRequests": 0,
   "events": [
     {
-      "id": 244,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.417Z",
+      "id": 575,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.620Z",
       "type": "run.started",
       "agent": "quil",
       "data": {
@@ -17,9 +17,9 @@
       }
     },
     {
-      "id": 245,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.419Z",
+      "id": 576,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.624Z",
       "type": "coordination.message",
       "agent": "quil",
       "data": {
@@ -27,20 +27,20 @@
       }
     },
     {
-      "id": 246,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.421Z",
+      "id": 577,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.627Z",
       "type": "agent.started",
       "agent": "pip",
       "data": {
-        "loopId": "63ad7fed-5e31-4712-85f0-dcad6b36abd0",
+        "loopId": "4e6dbf22-bf43-4d14-9311-39b9886540a4",
         "revision": 0
       }
     },
     {
-      "id": 247,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.422Z",
+      "id": 578,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.629Z",
       "type": "operation.started",
       "agent": "pip",
       "data": {
@@ -48,9 +48,9 @@
       }
     },
     {
-      "id": 248,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.492Z",
+      "id": 579,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.710Z",
       "type": "operation.completed",
       "agent": "pip",
       "data": {
@@ -58,9 +58,9 @@
       }
     },
     {
-      "id": 249,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.498Z",
+      "id": 580,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.715Z",
       "type": "agent.update",
       "agent": "pip",
       "data": {
@@ -69,38 +69,38 @@
       }
     },
     {
-      "id": 250,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.503Z",
+      "id": 581,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.719Z",
       "type": "agent.completed",
       "agent": "pip",
       "data": {
-        "loopId": "63ad7fed-5e31-4712-85f0-dcad6b36abd0",
+        "loopId": "4e6dbf22-bf43-4d14-9311-39b9886540a4",
         "revision": 0,
-        "elapsedMs": 81,
+        "elapsedMs": 91,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T19:54:52.422Z"
+            "at": "2026-10-29T21:34:24.629Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T19:54:52.498Z"
+            "at": "2026-10-29T21:34:24.715Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T19:54:52.498Z"
+            "at": "2026-10-29T21:34:24.715Z"
           }
         ]
       }
     },
     {
-      "id": 251,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.510Z",
+      "id": 582,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.724Z",
       "type": "coordination.message",
       "agent": "pip",
       "data": {
@@ -108,31 +108,31 @@
       }
     },
     {
-      "id": 252,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.517Z",
+      "id": 583,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.729Z",
       "type": "agent.started",
       "agent": "milo",
       "data": {
-        "loopId": "9b7a4525-8e2a-4a86-a3bf-cb79bf10bfd7",
+        "loopId": "363f8219-8344-4e00-a680-576ff5820ce1",
         "revision": 0
       }
     },
     {
-      "id": 253,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.523Z",
+      "id": 584,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.733Z",
       "type": "agent.started",
       "agent": "iris",
       "data": {
-        "loopId": "bd68c87b-9b2f-41ab-ae6b-d7ed86265df6",
+        "loopId": "62c727c4-deac-4150-b560-161a69f0b9e8",
         "revision": 0
       }
     },
     {
-      "id": 254,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.528Z",
+      "id": 585,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.737Z",
       "type": "operation.started",
       "agent": "milo",
       "data": {
@@ -140,9 +140,9 @@
       }
     },
     {
-      "id": 255,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.533Z",
+      "id": 586,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.741Z",
       "type": "operation.started",
       "agent": "iris",
       "data": {
@@ -150,9 +150,9 @@
       }
     },
     {
-      "id": 256,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.603Z",
+      "id": 587,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.819Z",
       "type": "operation.completed",
       "agent": "milo",
       "data": {
@@ -160,9 +160,9 @@
       }
     },
     {
-      "id": 257,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.608Z",
+      "id": 588,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.824Z",
       "type": "agent.update",
       "agent": "milo",
       "data": {
@@ -171,38 +171,38 @@
       }
     },
     {
-      "id": 258,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.613Z",
+      "id": 589,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.828Z",
       "type": "agent.completed",
       "agent": "milo",
       "data": {
-        "loopId": "9b7a4525-8e2a-4a86-a3bf-cb79bf10bfd7",
+        "loopId": "363f8219-8344-4e00-a680-576ff5820ce1",
         "revision": 0,
-        "elapsedMs": 90,
+        "elapsedMs": 95,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T19:54:52.528Z"
+            "at": "2026-10-29T21:34:24.737Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T19:54:52.608Z"
+            "at": "2026-10-29T21:34:24.824Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T19:54:52.608Z"
+            "at": "2026-10-29T21:34:24.824Z"
           }
         ]
       }
     },
     {
-      "id": 259,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.618Z",
+      "id": 590,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.833Z",
       "type": "coordination.message",
       "agent": "milo",
       "data": {
@@ -210,20 +210,20 @@
       }
     },
     {
-      "id": 260,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.622Z",
+      "id": 591,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.838Z",
       "type": "agent.started",
       "agent": "wren",
       "data": {
-        "loopId": "bbae6d39-5aa6-409d-afc5-91d8734a94ae",
+        "loopId": "a58fc8db-2aa6-4393-96ae-b8c5baeace52",
         "revision": 0
       }
     },
     {
-      "id": 261,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.627Z",
+      "id": 592,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.842Z",
       "type": "operation.started",
       "agent": "wren",
       "data": {
@@ -231,9 +231,9 @@
       }
     },
     {
-      "id": 262,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.698Z",
+      "id": 593,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.914Z",
       "type": "operation.completed",
       "agent": "wren",
       "data": {
@@ -241,9 +241,9 @@
       }
     },
     {
-      "id": 263,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.703Z",
+      "id": 594,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.918Z",
       "type": "agent.update",
       "agent": "wren",
       "data": {
@@ -252,38 +252,38 @@
       }
     },
     {
-      "id": 264,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.707Z",
+      "id": 595,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.923Z",
       "type": "agent.completed",
       "agent": "wren",
       "data": {
-        "loopId": "bbae6d39-5aa6-409d-afc5-91d8734a94ae",
+        "loopId": "a58fc8db-2aa6-4393-96ae-b8c5baeace52",
         "revision": 0,
         "elapsedMs": 81,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T19:54:52.626Z"
+            "at": "2026-10-29T21:34:24.842Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T19:54:52.702Z"
+            "at": "2026-10-29T21:34:24.918Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T19:54:52.702Z"
+            "at": "2026-10-29T21:34:24.918Z"
           }
         ]
       }
     },
     {
-      "id": 265,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.711Z",
+      "id": 596,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.926Z",
       "type": "draft.provisional",
       "agent": "wren",
       "data": {
@@ -295,9 +295,9 @@
       }
     },
     {
-      "id": 266,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.790Z",
+      "id": 597,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.991Z",
       "type": "operation.completed",
       "agent": "iris",
       "data": {
@@ -305,9 +305,9 @@
       }
     },
     {
-      "id": 267,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.795Z",
+      "id": 598,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:24.996Z",
       "type": "agent.update",
       "agent": "iris",
       "data": {
@@ -316,38 +316,109 @@
       }
     },
     {
-      "id": 268,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.798Z",
+      "id": 599,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.001Z",
       "type": "agent.completed",
       "agent": "iris",
       "data": {
-        "loopId": "bd68c87b-9b2f-41ab-ae6b-d7ed86265df6",
+        "loopId": "62c727c4-deac-4150-b560-161a69f0b9e8",
         "revision": 0,
-        "elapsedMs": 270,
+        "elapsedMs": 264,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T19:54:52.528Z"
+            "at": "2026-10-29T21:34:24.737Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T19:54:52.795Z"
+            "at": "2026-10-29T21:34:24.996Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T19:54:52.795Z"
+            "at": "2026-10-29T21:34:24.996Z"
           }
         ]
       }
     },
     {
-      "id": 269,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.801Z",
+      "id": 600,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.005Z",
+      "type": "agent.started",
+      "agent": "iris",
+      "data": {
+        "loopId": "2bc77c2e-0625-46aa-ac4f-6ab48a9f5d00",
+        "revision": 1
+      }
+    },
+    {
+      "id": 601,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.010Z",
+      "type": "operation.started",
+      "agent": "iris",
+      "data": {
+        "revision": 1
+      }
+    },
+    {
+      "id": 602,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.270Z",
+      "type": "operation.completed",
+      "agent": "iris",
+      "data": {
+        "revision": 1
+      }
+    },
+    {
+      "id": 603,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.278Z",
+      "type": "agent.update",
+      "agent": "iris",
+      "data": {
+        "text": "1 supported; 1 inconclusive; 1 set aside.",
+        "revision": 1
+      }
+    },
+    {
+      "id": 604,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.279Z",
+      "type": "agent.completed",
+      "agent": "iris",
+      "data": {
+        "loopId": "2bc77c2e-0625-46aa-ac4f-6ab48a9f5d00",
+        "revision": 1,
+        "elapsedMs": 269,
+        "transitions": [
+          {
+            "from": "awaiting_inference_request",
+            "to": "awaiting_inference",
+            "at": "2026-10-29T21:34:25.010Z"
+          },
+          {
+            "from": "awaiting_inference",
+            "to": "idle",
+            "at": "2026-10-29T21:34:25.278Z"
+          },
+          {
+            "from": "idle",
+            "to": "completed",
+            "at": "2026-10-29T21:34:25.278Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": 605,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.281Z",
       "type": "review.completed",
       "agent": "iris",
       "data": {
@@ -383,9 +454,9 @@
       }
     },
     {
-      "id": 270,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.805Z",
+      "id": 606,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.282Z",
       "type": "draft.invalidated",
       "agent": "iris",
       "data": {
@@ -396,9 +467,9 @@
       }
     },
     {
-      "id": 271,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.810Z",
+      "id": 607,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.284Z",
       "type": "coordination.message",
       "agent": "iris",
       "data": {
@@ -407,20 +478,20 @@
       }
     },
     {
-      "id": 272,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.817Z",
+      "id": 608,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.285Z",
       "type": "agent.started",
       "agent": "wren",
       "data": {
-        "loopId": "449912ff-1a93-4952-8f55-35d3a2b0ee47",
+        "loopId": "dde4d394-c4cb-422c-b7b5-8dcb60735f78",
         "revision": 1
       }
     },
     {
-      "id": 273,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.821Z",
+      "id": 609,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.287Z",
       "type": "operation.started",
       "agent": "wren",
       "data": {
@@ -428,9 +499,9 @@
       }
     },
     {
-      "id": 274,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.898Z",
+      "id": 610,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.364Z",
       "type": "operation.completed",
       "agent": "wren",
       "data": {
@@ -438,9 +509,9 @@
       }
     },
     {
-      "id": 275,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.902Z",
+      "id": 611,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.369Z",
       "type": "agent.update",
       "agent": "wren",
       "data": {
@@ -449,38 +520,38 @@
       }
     },
     {
-      "id": 276,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.907Z",
+      "id": 612,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.373Z",
       "type": "agent.completed",
       "agent": "wren",
       "data": {
-        "loopId": "449912ff-1a93-4952-8f55-35d3a2b0ee47",
+        "loopId": "dde4d394-c4cb-422c-b7b5-8dcb60735f78",
         "revision": 1,
-        "elapsedMs": 86,
+        "elapsedMs": 87,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T19:54:52.821Z"
+            "at": "2026-10-29T21:34:25.287Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T19:54:52.902Z"
+            "at": "2026-10-29T21:34:25.369Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T19:54:52.902Z"
+            "at": "2026-10-29T21:34:25.369Z"
           }
         ]
       }
     },
     {
-      "id": 277,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.911Z",
+      "id": 613,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.377Z",
       "type": "draft.approved",
       "agent": "wren",
       "data": {
@@ -491,9 +562,9 @@
       }
     },
     {
-      "id": 278,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.916Z",
+      "id": 614,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.382Z",
       "type": "coordination.message",
       "agent": "wren",
       "data": {
@@ -502,20 +573,20 @@
       }
     },
     {
-      "id": 279,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.920Z",
+      "id": 615,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.387Z",
       "type": "agent.started",
       "agent": "quil",
       "data": {
-        "loopId": "927cfcd9-ce23-4a9a-ac23-76e5674101d0",
+        "loopId": "e6db9156-d9a8-492a-ad70-5156156b923d",
         "revision": 1
       }
     },
     {
-      "id": 280,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:52.923Z",
+      "id": 616,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.391Z",
       "type": "operation.started",
       "agent": "quil",
       "data": {
@@ -523,9 +594,9 @@
       }
     },
     {
-      "id": 281,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:53.007Z",
+      "id": 617,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.474Z",
       "type": "operation.completed",
       "agent": "quil",
       "data": {
@@ -533,9 +604,9 @@
       }
     },
     {
-      "id": 282,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:53.021Z",
+      "id": 618,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.478Z",
       "type": "agent.update",
       "agent": "quil",
       "data": {
@@ -544,38 +615,38 @@
       }
     },
     {
-      "id": 283,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:53.030Z",
+      "id": 619,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.482Z",
       "type": "agent.completed",
       "agent": "quil",
       "data": {
-        "loopId": "927cfcd9-ce23-4a9a-ac23-76e5674101d0",
+        "loopId": "e6db9156-d9a8-492a-ad70-5156156b923d",
         "revision": 1,
-        "elapsedMs": 107,
+        "elapsedMs": 91,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T19:54:52.923Z"
+            "at": "2026-10-29T21:34:25.391Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T19:54:53.021Z"
+            "at": "2026-10-29T21:34:25.478Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T19:54:53.021Z"
+            "at": "2026-10-29T21:34:25.478Z"
           }
         ]
       }
     },
     {
-      "id": 284,
-      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
-      "at": "2026-10-29T19:54:53.038Z",
+      "id": 620,
+      "runId": "6206d408-43c4-49dd-8b5b-b58b6ab3b702",
+      "at": "2026-10-29T21:34:25.491Z",
       "type": "run.completed",
       "agent": "quil",
       "data": {
@@ -662,6 +733,22 @@
               "text": "Hi Fern & Co. Cleaning team,\n\nI came across your booking profile. I offer website design and wondered whether making booking enquiries simpler would be useful. Would you be open to a quick conversation?\n\n[Your name]",
               "sourceIds": [
                 "fixture-fern"
+              ],
+              "offer": "Proposal for Fern & Co. Cleaning\n\nWhy this may be relevant\nThe fictional profile supports a booking-flow conversation. This is a conversation starter; it does not establish that the current process is a problem.\n\nProposed service\nwebsite design, shaped around how Fern & Co. Cleaning currently handles enquiries and bookings.\n\nSuggested scope\n• A clear mobile-friendly page describing the services you choose to promote.\n• An enquiry or appointment-request form with only the details your team needs.\n• A clear next step directing customers to your preferred booking/contact method.\n• A handover so your team can update the page and manage enquiries.\n\nWebsite position\nWebsite ownership, functionality and the full booking process still need confirmation. No missing or broken website is claimed.\n\nBefore agreeing\nConfirm the current workflow, existing tools, access, accessibility needs and what success would mean.\n\nPrice, timing and ongoing costs\nTo be agreed after discovery. No price, delivery date, savings or sales increase is promised.\n\nSuggested next step\nA 20-minute conversation to understand the current process before committing to work.",
+              "followUps": [
+                {
+                  "afterDays": 3,
+                  "text": "Hi Fern & Co. Cleaning, just following up on my note about a possible booking/enquiry page. Is this something that would be useful to discuss, or does your current setup already cover it? No problem if it is not a priority."
+                },
+                {
+                  "afterDays": 7,
+                  "text": "Hi Fern & Co. Cleaning, one final note about the booking-page idea. If it would help, we could have a short conversation about your current process. Otherwise I will leave it here. Thanks for your time."
+                }
+              ],
+              "meetingAgenda": [
+                "Understand the current enquiry and booking process.",
+                "Check existing website/tools and what should stay.",
+                "Agree whether help is useful, then discuss scope, budget and timing."
               ]
             }
           ],
@@ -671,7 +758,7 @@
               "url": "https://example.invalid/fern",
               "title": "Fictional Fern booking profile",
               "observation": "Fern & Co. Cleaning asks customers to message for availability.",
-              "observedAt": "2026-10-29T19:54:52.492Z",
+              "observedAt": "2026-10-29T21:34:24.709Z",
               "fictional": true
             },
             {
@@ -679,7 +766,7 @@
               "url": "https://example.invalid/clearwell",
               "title": "Fictional Clearwell website check",
               "observation": "One website check timed out. This is inconclusive.",
-              "observedAt": "2026-10-29T19:54:52.492Z",
+              "observedAt": "2026-10-29T21:34:24.709Z",
               "fictional": true
             },
             {
@@ -687,10 +774,11 @@
               "url": "https://example.invalid/sunday",
               "title": "Fictional Sunday follow-up",
               "observation": "The follow-up confirms an existing website; withdraw the no-website pitch.",
-              "observedAt": "2026-10-29T19:54:52.492Z",
+              "observedAt": "2026-10-29T21:34:24.709Z",
               "fictional": true
             }
-          ]
+          ],
+          "websiteChecks": []
         },
         "usage": []
       }

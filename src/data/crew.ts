@@ -67,6 +67,6 @@ export const crew: {
     light: "#ffe9d5",
     dark: "#ad7359",
     introduction:
-      "I’m Wren. I turn the findings into a thoughtful first hello. You can edit every word before using it.",
+      "I’m Wren. I prepare the offer, first hello, follow-ups and meeting agenda. You can review and edit them before anything goes out.",
   },
 ];

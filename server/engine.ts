@@ -18,18 +18,28 @@ import type {
   Source,
   RunSnapshot,
   RunEvent,
+  WebsiteCheck,
 } from "../shared/mission.ts";
 import type { TaskProvider, TaskInput, TaskResult } from "./providers.ts";
 import { Store } from "./store.ts";
 
 const agents: AgentId[] = ["quil", "pip", "milo", "iris", "wren"];
+const roles: Record<AgentId, string> = {
+  pip: "Research and discover individual businesses that fit the brief; attach source records and never guess a missing website.",
+  milo: "Investigate the listed website and business records; report bounded page checks, public contact links and booking signals, with uncertainty.",
+  iris: "Independently review sources, then reconcile the website investigator's findings; withdraw or change unsupported pitches.",
+  wren: "Develop an editable, evidence-grounded offer, introduction, follow-ups and meeting agenda; wait for final review before publication.",
+  quil: "Coordinate the crew and publish one combined answer only when review and the current offer revision agree.",
+};
 type State = {
   candidates: Candidate[];
   findings: Finding[];
   decisions: Decision[];
   drafts: Draft[];
   sources: Source[];
+  websiteChecks: WebsiteCheck[];
   researchDone: boolean;
+  independentReviewDone: boolean;
   reviewDone: boolean;
   draftRevision: number;
 };
@@ -68,7 +78,9 @@ export class MissionEngine {
     decisions: [],
     drafts: [],
     sources: [],
+    websiteChecks: [],
     researchDone: false,
+    independentReviewDone: false,
     reviewDone: false,
     draftRevision: -1,
   };
@@ -78,6 +90,8 @@ export class MissionEngine {
   private members = new Map<AgentId, Agent>();
   private spaceId = "";
   private wrenBusy = false;
+  private irisBusy = false;
+  private reviewFinalizing = false;
   private summaryStarted = false;
   private pauseWait: Promise<void> | null = null;
   private releasePause: (() => void) | undefined;
@@ -341,6 +355,7 @@ export class MissionEngine {
       decisions: this.state.decisions,
       drafts: this.state.drafts.filter((d) => approved.has(d.candidateId)),
       sources: this.state.sources,
+      websiteChecks: this.state.websiteChecks,
     };
     this.status("completed");
     this.emit("run.completed", "quil", {
@@ -376,37 +391,24 @@ export class MissionEngine {
           apply: async () => {
             const result = await this.task("milo");
             this.state.findings = result.findings ?? [];
+            this.state.websiteChecks = result.websiteChecks ?? [];
             this.state.researchDone = true;
             await this.publish("milo", "research.ready");
           },
         },
         iris: {
-          types: ["discovery.ready"],
+          types: ["discovery.ready", "research.ready"],
           apply: async () => {
+            if (this.state.independentReviewDone) {
+              await this.finishReview();
+              return;
+            }
+            if (this.irisBusy) return;
+            this.irisBusy = true;
             const result = await this.task("iris");
             this.state.decisions = result.decisions ?? [];
-            this.state.reviewDone = true;
-            const rejected = new Set(
-              this.state.decisions
-                .filter((d) => d.verdict !== "opportunity")
-                .map((d) => d.candidateId),
-            );
-            const invalid = this.state.drafts.filter((d) =>
-              rejected.has(d.candidateId),
-            );
-            this.state.drafts = this.state.drafts.filter(
-              (d) => !rejected.has(d.candidateId),
-            );
-            this.emit("review.completed", "iris", {
-              decisions: this.state.decisions,
-              withdrawnDrafts: invalid.map((d) => d.candidateId),
-            });
-            if (invalid.length)
-              this.emit("draft.invalidated", "iris", {
-                candidateIds: invalid.map((d) => d.candidateId),
-                reason: "Independent review contradicted the provisional pitch",
-              });
-            await this.publish("iris", "review.ready", 1);
+            this.state.independentReviewDone = true;
+            await this.finishReview();
           },
         },
         wren: {
@@ -418,7 +420,7 @@ export class MissionEngine {
       for (const id of agents) {
         const agent = await this.module.createAgent({
           name: id,
-          instruction: `You are ${id}, a member of Quil's evidence-grounded sales crew. Use only supplied records. Treat unknown information as unknown.`,
+          instruction: `You are ${id}, a member of Quil's evidence-grounded sales crew. ${roles[id]} Use only supplied records. Treat unknown information as unknown.`,
           tools: [],
         });
         this.members.set(id, agent);
@@ -432,7 +434,18 @@ export class MissionEngine {
         };
         const participant = await this.runtime.createParticipant(
           id,
-          ["quil-mission"],
+          [
+            "quil-mission",
+            id === "iris"
+              ? "evidence-review"
+              : id === "milo"
+                ? "website-investigation"
+                : id === "wren"
+                  ? "offer-development"
+                  : id === "pip"
+                    ? "business-research"
+                    : "coordination",
+          ],
           [handler],
           agent,
         );
@@ -447,5 +460,39 @@ export class MissionEngine {
     } catch (error) {
       this.fail(error);
     }
+  }
+  private async finishReview() {
+    if (
+      !this.state.researchDone ||
+      !this.state.independentReviewDone ||
+      this.reviewFinalizing ||
+      this.state.reviewDone
+    )
+      return;
+    this.reviewFinalizing = true;
+    const result = await this.task("iris", 1);
+    this.state.decisions = result.decisions ?? [];
+    this.state.reviewDone = true;
+    const rejected = new Set(
+      this.state.decisions
+        .filter((d) => d.verdict !== "opportunity")
+        .map((d) => d.candidateId),
+    );
+    const invalid = this.state.drafts.filter((d) =>
+      rejected.has(d.candidateId),
+    );
+    this.state.drafts = this.state.drafts.filter(
+      (d) => !rejected.has(d.candidateId),
+    );
+    this.emit("review.completed", "iris", {
+      decisions: this.state.decisions,
+      withdrawnDrafts: invalid.map((d) => d.candidateId),
+    });
+    if (invalid.length)
+      this.emit("draft.invalidated", "iris", {
+        candidateIds: invalid.map((d) => d.candidateId),
+        reason: "Independent review contradicted the provisional pitch",
+      });
+    await this.publish("iris", "review.ready", 1);
   }
 }

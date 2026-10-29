@@ -3,12 +3,12 @@ import type { CreatedRun, RunEvent } from "../shared/mission.ts";
 
 const base = "http://127.0.0.1:8787";
 const health = await (await fetch(base + "/api/health")).json();
-if (health.mode !== "fixture")
-  throw Error("This demonstration only runs in free fixture mode");
+if (health.status !== "ok") throw Error("Start the local API first");
 const response = await fetch(base + "/api/runs", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
+    mode: "fixture",
     request:
       "Find cleaning businesses in Manchester that could use a simpler booking website.",
   }),

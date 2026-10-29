@@ -3,9 +3,12 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Config } from "./config.ts";
 import { assertLiveConfigured } from "./config.ts";
-import { Store } from "./store.ts";
+import { Store, hashToken } from "./store.ts";
 import { MissionEngine } from "./engine.ts";
 import { prepareBrief } from "./brief.ts";
+import { GoogleConnection, ActionError } from "./google.ts";
+import { OutreachService } from "./outreach.ts";
+import { crewAction } from "./crew-action.ts";
 import { FixtureProvider, LiveProvider } from "./providers.ts";
 import type { TaskProvider } from "./providers.ts";
 import type { Brief, RunSnapshot, RunEvent } from "../shared/mission.ts";
@@ -88,6 +91,7 @@ export function createApi(
   options: {
     store?: Store;
     providerFactory?: (id: string) => TaskProvider;
+    google?: GoogleConnection;
   } = {},
 ) {
   const store = options.store ?? new Store(config.dataDir);
@@ -99,6 +103,9 @@ export function createApi(
     throw error;
   }
   const active = new Map<string, MissionEngine>();
+  const google = options.google ?? new GoogleConnection(config, store);
+  const outreach = new OutreachService(store, google);
+  outreach.recover();
   const streams = new Map<string, Set<ServerResponse>>();
   const publish = (event: RunEvent) => {
     for (const res of streams.get(event.runId) ?? []) {
@@ -118,12 +125,18 @@ export function createApi(
         res.destroy();
         return;
       }
-      json(res, error instanceof HttpError ? error.status : 500, {
-        error:
-          error instanceof HttpError
-            ? error.message
-            : "The server could not process this request",
-      });
+      json(
+        res,
+        error instanceof HttpError || error instanceof ActionError
+          ? error.status
+          : 500,
+        {
+          error:
+            error instanceof HttpError || error instanceof ActionError
+              ? error.message
+              : "The server could not process this request",
+        },
+      );
     });
   });
   server.requestTimeout = 10_000;
@@ -140,6 +153,126 @@ export function createApi(
     )
       throw new HttpError(403, "Origin not allowed");
     const url = new URL(req.url ?? "/", `http://${host}`);
+    if (
+      url.pathname.startsWith("/api/google") ||
+      url.pathname.startsWith("/api/outreach")
+    ) {
+      // Google is a single-owner local integration, separate from run tokens.
+      // Cross-site forms cannot authorize sending or create login sessions.
+      const existing = req.headers.cookie?.match(
+        /(?:^|;\s*)quil_owner=([a-f0-9]{64})(?:;|$)/,
+      )?.[1];
+      const owner =
+        existing && store.cached<boolean>(`owner:${hashToken(existing)}`);
+      if (req.method === "GET" && url.pathname === "/api/google/status") {
+        if (!owner) {
+          const session = randomBytes(32).toString("hex");
+          store.cache(`owner:${hashToken(session)}`, true, 30 * 86400_000);
+          res.setHeader(
+            "Set-Cookie",
+            `quil_owner=${session}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=2592000`,
+          );
+        }
+        json(res, 200, google.status());
+        return;
+      }
+      if (req.method === "GET" && url.pathname === "/api/google/callback") {
+        const returnTo = await google.callback(
+          url.searchParams.get("state") ?? "",
+          url.searchParams.get("code") ?? "",
+        );
+        res.writeHead(303, {
+          Location: `${returnTo}/#/workspace`,
+          "Cache-Control": "no-store",
+          "Referrer-Policy": "no-referrer",
+        });
+        res.end();
+        return;
+      }
+      if (
+        !owner ||
+        (req.method === "POST" &&
+          (!origin || req.headers["x-quil-action"] !== "review"))
+      )
+        throw new HttpError(
+          403,
+          "Open Quil locally and review the action first.",
+        );
+      if (req.method === "POST" && url.pathname === "/api/google/connect") {
+        json(res, 200, { url: google.authorize(origin!) });
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/google/disconnect") {
+        await google.disconnect();
+        json(res, 200, google.status());
+        return;
+      }
+      if (req.method === "GET" && url.pathname === "/api/outreach") {
+        json(res, 200, {
+          actions: outreach.list(
+            url.searchParams.get("runId") ?? "",
+            url.searchParams.get("candidateId") ?? "",
+          ),
+        });
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/outreach/prepare") {
+        const value = await body(req);
+        if (typeof value.runId !== "string")
+          throw new HttpError(400, "A source run is required.");
+        json(res, 201, {
+          action: await crewAction(
+            store,
+            value.runId,
+            "wren",
+            "prepare-outreach-preview",
+            () => outreach.prepare(value),
+          ),
+        });
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/outreach/slots") {
+        const value = await body(req);
+        if (typeof value.runId !== "string")
+          throw new HttpError(400, "A source run is required.");
+        json(res, 200, {
+          slots: await crewAction(
+            store,
+            value.runId,
+            "quil",
+            "find-calendar-availability",
+            () => outreach.availableSlots(value),
+          ),
+        });
+        return;
+      }
+      const actionMatch = url.pathname.match(
+        /^\/api\/outreach\/([a-f0-9]{32})\/(approve|sync|cancel)$/,
+      );
+      if (actionMatch && req.method === "POST") {
+        const value = await body(req),
+          [, actionId, operation] = actionMatch;
+        const recorded = outreach.get(actionId);
+        const action =
+          operation === "cancel"
+            ? outreach.cancel(actionId)
+            : await crewAction(
+                store,
+                recorded.runId,
+                "quil",
+                operation === "approve"
+                  ? "carry-out-approved-outreach"
+                  : "check-outreach-status",
+                () =>
+                  operation === "approve"
+                    ? outreach.approve(actionId, value.approved)
+                    : outreach.sync(actionId),
+              );
+        json(res, 200, { action });
+        return;
+      }
+      throw new HttpError(404, "Integration endpoint not found");
+    }
     if (req.method === "GET" && url.pathname === "/api/health") {
       json(res, 200, {
         status: "ok",

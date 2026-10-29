@@ -14,13 +14,14 @@ import { useCrewRuns } from "../hooks/useCrewRuns";
 import { prepareRun } from "../lib/api";
 import type { PreparedBrief } from "../../shared/mission";
 import { followUp } from "../lib/follow-up";
+import GoogleSettings from "../components/GoogleSettings";
 
 const exampleRequest =
   "Find cleaning businesses in Manchester that could use a simpler booking website.";
 export default function CrewRoom({ goHome }: { goHome: () => void }) {
   const session = useCrewRuns();
   const [input, setInput] = useState(""),
-    [panel, setPanel] = useState<"saved" | "about" | null>(null),
+    [panel, setPanel] = useState<"saved" | "about" | "google" | null>(null),
     [toast, setToast] = useState(""),
     [introducing, setIntroducing] = useState(false);
   const [saved, setSaved] = useState<Prospect[]>(readSaved);
@@ -185,7 +186,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       session.say("you", request);
       session.say(
         "quil",
-        "Pip scouts. Milo investigates. Iris checks the evidence. Wren writes. I bring their findings together.",
+        "Pip finds businesses. Milo investigates their websites. Iris checks the evidence. Wren prepares the offer and messages. I keep everyone coordinated.",
       );
       return;
     }
@@ -247,6 +248,13 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       saved={saved.some((p) => p.id === prospect.id)}
       onSave={toggleSave}
       onDraftChange={(draft) => updateDraft(prospect, draft)}
+      onOfferChange={(offer) =>
+        setSaved((current) =>
+          current.map((item) =>
+            item.id === prospect.id ? { ...item, offer } : item,
+          ),
+        )
+      }
       notify={notify}
       answer={answerText !== undefined}
       answerText={answerText}
@@ -300,6 +308,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         "Decision",
         "Location",
         "Introduction",
+        "Offer",
         "Source URLs",
         "Evidence",
         "Retrieved at",
@@ -310,6 +319,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         p.note,
         p.location,
         p.draft,
+        p.offer ?? "",
         p.sources.map((source) => source.url).join("\n"),
         p.sources.map((source) => source.observation).join("\n"),
         p.sources.map((source) => source.observedAt).join("\n"),
@@ -343,6 +353,14 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
           >
             <Icon name="bookmark" size={17} />
             <span>Saved{saved.length > 0 && <i>{saved.length}</i>}</span>
+          </button>
+          <button
+            className="room-connect-button"
+            onClick={() => setPanel("google")}
+            aria-label="Gmail and Calendar connection"
+            title="Gmail & Calendar"
+          >
+            <Icon name="mail" size={18} />
           </button>
           <button
             className="icon-button"
@@ -569,13 +587,17 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       {panel && (
         <Sheet
           title={
-            panel === "saved"
-              ? "Worth keeping."
-              : "A little crew. A shared purpose."
+            panel === "google"
+              ? "Your connections."
+              : panel === "saved"
+                ? "Worth keeping."
+                : "A little crew. A shared purpose."
           }
           onClose={closePanel}
         >
-          {panel === "saved" ? (
+          {panel === "google" ? (
+            <GoogleSettings />
+          ) : panel === "saved" ? (
             <>
               <p className="sheet-description">
                 The possibilities you’ve saved for another look.

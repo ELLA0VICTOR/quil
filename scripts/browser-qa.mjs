@@ -358,6 +358,27 @@ try {
   const savedDraftUpdated = await evaluate(
     "JSON.parse(localStorage.getItem('quil:saved:v2'))[0].draft.includes('A short outline is available.')",
   );
+  await evaluate(
+    "[...document.querySelectorAll('.lead-entry-links button')].find(button=>button.textContent.includes('Tailored offer')).click()",
+  );
+  const tailoredOffer = await evaluate(
+    "document.querySelector('.tailored-offer textarea')?.value.includes('To be agreed')",
+  );
+  await evaluate(
+    "(()=>{const field=document.querySelector('.tailored-offer textarea');field.focus();field.setSelectionRange(field.value.length,field.value.length)})()",
+  );
+  await send("Input.insertText", { text: "\n\nScope reviewed by me." });
+  const savedOfferUpdated = await evaluate(
+    "JSON.parse(localStorage.getItem('quil:saved:v2'))[0].offer.includes('Scope reviewed by me.')",
+  );
+  await screenshot("64-editable-tailored-offer");
+  await evaluate(
+    "[...document.querySelectorAll('.lead-entry-links button')].find(button=>button.textContent.includes('Contact & next steps')).click()",
+  );
+  const fictionalOutreachBlocked = await evaluate(
+    "document.querySelector('.outreach-note')?.textContent.includes('fictional business')&&!document.querySelector('.outreach-compose')",
+  );
+  await click(".lead-entry-links button:nth-child(2)");
   await click(".room-saved-button");
   await wait(150);
   const saved = await evaluate(
@@ -396,6 +417,16 @@ try {
       "document.querySelectorAll('.shared-outcome').length===1&&document.querySelector('.room-saved-button').textContent.includes('1')",
     ));
   const createsBeforeFollowUp = runCreates;
+  await click(".room-connect-button");
+  for (let i = 0; i < 40; i++) {
+    if (await evaluate("!!document.querySelector('.google-setup')")) break;
+    await wait(40);
+  }
+  const googleSetupHonest = await evaluate(
+    "document.querySelector('.google-setup')?.textContent.includes('GOOGLE_CLIENT_ID')&&document.querySelector('.google-settings .button').disabled",
+  );
+  await screenshot("65-google-connection-setup");
+  await click(".side-sheet .icon-button");
   await type("Why did you choose Fern & Co. Cleaning?");
   await click(".composer-send");
   await wait(150);
@@ -513,6 +544,10 @@ try {
     evidence,
     draft,
     savedDraftUpdated,
+    tailoredOffer,
+    savedOfferUpdated,
+    fictionalOutreachBlocked,
+    googleSetupHonest,
     completedRecovery,
     freeFollowUp,
     cancelled,
@@ -584,6 +619,10 @@ try {
     evidence < 1 ||
     !draft ||
     !savedDraftUpdated ||
+    !tailoredOffer ||
+    !savedOfferUpdated ||
+    !fictionalOutreachBlocked ||
+    !googleSetupHonest ||
     !completedRecovery ||
     !freeFollowUp ||
     !cancelled ||

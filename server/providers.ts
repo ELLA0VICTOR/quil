@@ -3,6 +3,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import type { Config } from "./config.ts";
 import { assertLiveConfigured } from "./config.ts";
 import { Store } from "./store.ts";
+import { investigateWebsite, loadPublicPage } from "./website.ts";
+import { developOffer } from "../shared/offers.ts";
 import {
   normalized,
   standaloneWebsite,
@@ -18,6 +20,7 @@ import type {
   Draft,
   Finding,
   Source,
+  WebsiteCheck,
 } from "../shared/mission.ts";
 
 export type TaskInput = {
@@ -27,6 +30,7 @@ export type TaskInput = {
   decisions: Decision[];
   sources: Source[];
   revision: number;
+  websiteChecks?: WebsiteCheck[];
 };
 export type TaskResult = {
   candidates?: Candidate[];
@@ -35,6 +39,7 @@ export type TaskResult = {
   drafts?: Draft[];
   text?: string;
   sources?: Source[];
+  websiteChecks?: WebsiteCheck[];
   corrections?: { candidateId: string; reason: string }[];
 };
 export interface TaskProvider {
@@ -280,6 +285,7 @@ export class LiveProvider implements TaskProvider {
     store: Store,
     runId: string,
     fetcher: typeof fetch = fetch,
+    private websiteLoader = loadPublicPage,
   ) {
     assertLiveConfigured(config);
     this.ai = new OpenAIJson(config, store, runId, fetcher);
@@ -341,9 +347,31 @@ export class LiveProvider implements TaskProvider {
     }
     if (agent === "milo") {
       if (!candidates.length) return { findings: [] };
+      const websiteChecks = await Promise.all(
+        candidates.map((candidate) =>
+          investigateWebsite(candidate, signal, this.websiteLoader),
+        ),
+      );
+      const pageSources: Source[] = websiteChecks
+        .filter((check) => check.url && check.status !== "not_listed")
+        .map((check) => ({
+          id: `website-${digest(JSON.stringify(check)).slice(0, 16)}`,
+          url: check.url!,
+          title: candidates.find(
+            (candidate) => candidate.id === check.candidateId,
+          )!.name,
+          observation:
+            check.reason +
+            (check.bookingLinks.length
+              ? " A booking link is present; its full functionality was not tested."
+              : ""),
+          observedAt: check.checkedAt,
+          fictional: false,
+          kind: "website_page",
+        }));
       const raw = await this.ai.call(
         'Research the supplied businesses using only their source records. JSON: {"findings":[{"candidateId":string,"summary":string,"sourceIds":string[]}]}. One short observation each; distinguish snippets from verified website content. Never infer no website from missing fields.',
-        input,
+        { ...input, websiteChecks },
         signal,
       );
       const findings = list(raw.findings, 3).map((item) => {
@@ -362,9 +390,40 @@ export class LiveProvider implements TaskProvider {
         new Set(findings.map((f) => f.candidateId)).size !== candidates.length
       )
         throw Error("Research did not cover each business");
-      return { findings };
+      return { findings, websiteChecks, sources: pageSources };
     }
     if (agent === "iris") {
+      if (input.revision === 1)
+        return {
+          decisions: input.decisions.map((decision) => {
+            const check = input.websiteChecks?.find(
+              (item) => item.candidateId === decision.candidateId,
+            );
+            if (
+              check?.bookingLinks.length &&
+              decision.verdict === "opportunity"
+            )
+              return {
+                ...decision,
+                verdict: "uncertain" as const,
+                reason:
+                  "The website check found a booking link. Check how that flow works before proposing a new booking page.",
+                sourceIds: [
+                  ...new Set([
+                    ...decision.sourceIds,
+                    ...input.sources
+                      .filter(
+                        (source) =>
+                          source.kind === "website_page" &&
+                          source.url === check.url,
+                      )
+                      .map((source) => source.id),
+                  ]),
+                ],
+              };
+            return decision;
+          }),
+        };
       const decisions: Decision[] = [];
       const sources: Source[] = [];
       for (const candidate of candidates) {
@@ -415,10 +474,14 @@ export class LiveProvider implements TaskProvider {
         sources: input.sources.filter((s) => sourceIds.has(s.id)),
       };
       const raw = await this.ai.call(
-        'Write brief editable introductions based only on supplied evidence. JSON: {"drafts":[{"candidateId":string,"text":string,"sourceIds":string[]}]}. Acknowledge uncertainty; never assert a missing/broken website. Include the decision evidenceQuote verbatim in the introduction as a quote from their public profile. Ask whether help would be useful; manual booking is not proof of a pain point. No invented contact details, URLs, guarantees or claims of lost customers. Do not send anything.',
+        'Write brief editable introductions based only on supplied evidence. JSON: {"drafts":[{"candidateId":string,"text":string,"sourceIds":string[],"offerAngle":string,"scope":string[]}]}. Each introduction at most 55 words; offerAngle at most 20 words; three proposed scope items at most 10 words each, tailored to this business. Scope is a proposal, never a factual claim. No prices, delivery deadlines or guaranteed results. Preserve an existing reachable website and propose a focused improvement. Acknowledge uncertainty; never assert a missing/broken website. Include the decision evidenceQuote verbatim in the introduction as a quote from their public profile. Ask whether help would be useful; manual booking is not proof of a pain point. No invented contact details, URLs, guarantees or claims of lost customers. Do not send anything.',
         draftInput,
         signal,
       );
+      const proposalPlans = new Map<
+        string,
+        { angle?: unknown; scope?: unknown }
+      >();
       const corrections: NonNullable<TaskResult["corrections"]> = [];
       const drafts = list(raw.drafts, 3).map((item) => {
         const v = object(item),
@@ -433,6 +496,7 @@ export class LiveProvider implements TaskProvider {
         if (!ids.length || ids.some((id) => !allowed.has(id)))
           throw Error("Draft needs evidence for this business");
         const decision = input.decisions.find((d) => d.candidateId === c.id)!;
+        proposalPlans.set(c.id, { angle: v.offerAngle, scope: v.scope });
         const proposed = text(v.text, 1800);
         const grounded = acceptableDraft(proposed, decision.evidenceQuote);
         if (!grounded)
@@ -449,7 +513,21 @@ export class LiveProvider implements TaskProvider {
       });
       if (new Set(drafts.map((d) => d.candidateId)).size !== eligible.length)
         throw Error("Drafts did not cover each approved business");
-      return { drafts, corrections };
+      return {
+        drafts: drafts.map((draft) =>
+          developOffer(
+            draft,
+            eligible.find((candidate) => candidate.id === draft.candidateId)!,
+            brief,
+            input.decisions.find(
+              (decision) => decision.candidateId === draft.candidateId,
+            )!,
+            input.websiteChecks,
+            proposalPlans.get(draft.candidateId),
+          ),
+        ),
+        corrections,
+      };
     }
     // The final decision is assembled from reviewed facts, never model ranking.
     const eligible = input.decisions.filter((d) => d.verdict === "opportunity");
@@ -594,11 +672,26 @@ export class FixtureProvider implements TaskProvider {
                   (d) => d.candidateId === c.id && d.verdict === "opportunity",
                 ),
           )
-          .map((c) => ({
-            candidateId: c.id,
-            text: `Hi ${c.name} team,\n\nI came across your booking profile. I offer ${input.brief.service} and wondered whether making booking enquiries simpler would be useful. Would you be open to a quick conversation?\n\n[Your name]`,
-            sourceIds: c.sourceIds,
-          })),
+          .map((c) =>
+            developOffer(
+              {
+                candidateId: c.id,
+                text: `Hi ${c.name} team,\n\nI came across your booking profile. I offer ${input.brief.service} and wondered whether making booking enquiries simpler would be useful. Would you be open to a quick conversation?\n\n[Your name]`,
+                sourceIds: c.sourceIds,
+              },
+              c,
+              input.brief,
+              input.decisions.find(
+                (decision) => decision.candidateId === c.id,
+              ) ?? {
+                candidateId: c.id,
+                verdict: "uncertain",
+                reason: "Provisional: awaiting independent review.",
+                sourceIds: c.sourceIds,
+              },
+              input.websiteChecks,
+            ),
+          ),
       };
     const names = (verdict: Decision["verdict"]) =>
       input.decisions

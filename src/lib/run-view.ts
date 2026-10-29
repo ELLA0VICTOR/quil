@@ -7,8 +7,10 @@ import type {
   RunSnapshot,
   RunStatus,
   Source,
+  Draft,
 } from "../../shared/mission.ts";
 import type { MissionPhase } from "../data/crew.ts";
+import { developOffer } from "../../shared/offers.ts";
 
 export type Activity = "waiting" | "working" | "ready" | "error";
 export type MissionView = {
@@ -40,6 +42,12 @@ export type Prospect = {
   sources: Source[];
   draft: string;
   fictional: boolean;
+  runId?: string;
+  candidateId?: string;
+  offer?: string;
+  followUps?: Draft["followUps"];
+  meetingAgenda?: string[];
+  contactEmails?: string[];
 };
 export const ended = (status: MissionView["status"]) =>
   ["completed", "failed", "cancelled"].includes(status);
@@ -163,7 +171,27 @@ export function prospectsFor(view: MissionView): Prospect[] {
     const decision = outcome.decisions.find(
       (d) => d.candidateId === candidate.id,
     );
-    const draft = outcome.drafts.find((d) => d.candidateId === candidate.id);
+    const originalDraft = outcome.drafts.find(
+      (d) => d.candidateId === candidate.id,
+    );
+    const draft =
+      originalDraft &&
+      !originalDraft.offer &&
+      decision?.verdict === "opportunity"
+        ? developOffer(
+            originalDraft,
+            candidate,
+            {
+              request: view.request,
+              category: view.brief?.category ?? "businesses",
+              location: view.location,
+              service: view.brief?.service ?? "website and booking-flow design",
+              limit: 1,
+            },
+            decision,
+            outcome.websiteChecks,
+          )
+        : originalDraft;
     const ids = new Set([
       ...candidate.sourceIds,
       ...(decision?.sourceIds ?? []),
@@ -187,6 +215,14 @@ export function prospectsFor(view: MissionView): Prospect[] {
       sources: outcome.sources.filter((s) => ids.has(s.id)),
       draft: draft?.text ?? "",
       fictional: view.mode === "fixture",
+      runId: view.id,
+      candidateId: candidate.id,
+      offer: draft?.offer,
+      followUps: draft?.followUps,
+      meetingAgenda: draft?.meetingAgenda,
+      contactEmails: outcome.websiteChecks?.find(
+        (check) => check.candidateId === candidate.id,
+      )?.contactEmails,
     };
   });
 }
