@@ -1,0 +1,329 @@
+{
+  "description": "Actual local live-provider Mozaik run. Manual and online booking records conflicted; the candidate remained inconclusive. No introduction was approved or sent. Source text and private tokens are omitted.",
+  "framework": "@mozaik-ai/core@4.2.0-beta.18",
+  "model": "gpt-6-luna",
+  "createdAt": "2026-10-29T20:40:25.626Z",
+  "status": "completed",
+  "researchReviewOverlapMs": 2394,
+  "candidateCount": 1,
+  "decisions": [
+    {
+      "verdict": "uncertain",
+      "reason": "Records describe both manual and online bookings. Check which flow is current before suggesting an improvement.",
+      "sourceCount": 2
+    }
+  ],
+  "draftCount": 0,
+  "usage": [
+    {
+      "provider": "openai",
+      "calls": 2,
+      "nanoUsd": 293375
+    },
+    {
+      "provider": "search",
+      "calls": 2,
+      "nanoUsd": 0
+    }
+  ],
+  "events": [
+    {
+      "type": "run.started",
+      "agent": "quil",
+      "at": "2026-10-29T20:40:25.643Z"
+    },
+    {
+      "type": "coordination.message",
+      "agent": "quil",
+      "at": "2026-10-29T20:40:25.646Z"
+    },
+    {
+      "type": "agent.started",
+      "agent": "pip",
+      "at": "2026-10-29T20:40:25.649Z",
+      "loopId": "f5363670-505e-4e09-b80b-f9896b926362",
+      "revision": 0
+    },
+    {
+      "type": "operation.started",
+      "agent": "pip",
+      "at": "2026-10-29T20:40:25.651Z",
+      "revision": 0
+    },
+    {
+      "type": "operation.completed",
+      "agent": "pip",
+      "at": "2026-10-29T20:40:31.442Z",
+      "revision": 0
+    },
+    {
+      "type": "agent.update",
+      "agent": "pip",
+      "at": "2026-10-29T20:40:31.444Z",
+      "revision": 0
+    },
+    {
+      "type": "agent.completed",
+      "agent": "pip",
+      "at": "2026-10-29T20:40:31.446Z",
+      "loopId": "f5363670-505e-4e09-b80b-f9896b926362",
+      "revision": 0,
+      "elapsedMs": 5795,
+      "transitions": [
+        {
+          "from": "awaiting_inference_request",
+          "to": "awaiting_inference",
+          "at": "2026-10-29T20:40:25.651Z"
+        },
+        {
+          "from": "awaiting_inference",
+          "to": "idle",
+          "at": "2026-10-29T20:40:31.444Z"
+        },
+        {
+          "from": "idle",
+          "to": "completed",
+          "at": "2026-10-29T20:40:31.444Z"
+        }
+      ]
+    },
+    {
+      "type": "coordination.message",
+      "agent": "pip",
+      "at": "2026-10-29T20:40:31.447Z"
+    },
+    {
+      "type": "agent.started",
+      "agent": "milo",
+      "at": "2026-10-29T20:40:31.449Z",
+      "loopId": "a2556cb7-62c9-48e5-9e46-42e339162ef6",
+      "revision": 0
+    },
+    {
+      "type": "agent.started",
+      "agent": "iris",
+      "at": "2026-10-29T20:40:31.451Z",
+      "loopId": "f89afe41-cb92-4a66-8a68-6b965b847c14",
+      "revision": 0
+    },
+    {
+      "type": "operation.started",
+      "agent": "milo",
+      "at": "2026-10-29T20:40:31.452Z",
+      "revision": 0
+    },
+    {
+      "type": "operation.started",
+      "agent": "iris",
+      "at": "2026-10-29T20:40:31.456Z",
+      "revision": 0
+    },
+    {
+      "type": "operation.completed",
+      "agent": "iris",
+      "at": "2026-10-29T20:40:33.850Z",
+      "revision": 0
+    },
+    {
+      "type": "agent.update",
+      "agent": "iris",
+      "at": "2026-10-29T20:40:33.852Z",
+      "revision": 0
+    },
+    {
+      "type": "agent.completed",
+      "agent": "iris",
+      "at": "2026-10-29T20:40:33.854Z",
+      "loopId": "f89afe41-cb92-4a66-8a68-6b965b847c14",
+      "revision": 0,
+      "elapsedMs": 2402,
+      "transitions": [
+        {
+          "from": "awaiting_inference_request",
+          "to": "awaiting_inference",
+          "at": "2026-10-29T20:40:31.452Z"
+        },
+        {
+          "from": "awaiting_inference",
+          "to": "idle",
+          "at": "2026-10-29T20:40:33.852Z"
+        },
+        {
+          "from": "idle",
+          "to": "completed",
+          "at": "2026-10-29T20:40:33.852Z"
+        }
+      ]
+    },
+    {
+      "type": "review.completed",
+      "agent": "iris",
+      "at": "2026-10-29T20:40:33.855Z"
+    },
+    {
+      "type": "coordination.message",
+      "agent": "iris",
+      "at": "2026-10-29T20:40:33.856Z",
+      "revision": 1
+    },
+    {
+      "type": "operation.completed",
+      "agent": "milo",
+      "at": "2026-10-29T20:40:36.801Z",
+      "revision": 0
+    },
+    {
+      "type": "agent.update",
+      "agent": "milo",
+      "at": "2026-10-29T20:40:36.803Z",
+      "revision": 0
+    },
+    {
+      "type": "agent.completed",
+      "agent": "milo",
+      "at": "2026-10-29T20:40:36.806Z",
+      "loopId": "a2556cb7-62c9-48e5-9e46-42e339162ef6",
+      "revision": 0,
+      "elapsedMs": 5355,
+      "transitions": [
+        {
+          "from": "awaiting_inference_request",
+          "to": "awaiting_inference",
+          "at": "2026-10-29T20:40:31.452Z"
+        },
+        {
+          "from": "awaiting_inference",
+          "to": "idle",
+          "at": "2026-10-29T20:40:36.803Z"
+        },
+        {
+          "from": "idle",
+          "to": "completed",
+          "at": "2026-10-29T20:40:36.803Z"
+        }
+      ]
+    },
+    {
+      "type": "coordination.message",
+      "agent": "milo",
+      "at": "2026-10-29T20:40:36.810Z"
+    },
+    {
+      "type": "agent.started",
+      "agent": "wren",
+      "at": "2026-10-29T20:40:36.816Z",
+      "loopId": "ba35f1c8-dba6-4bfe-852c-0e3a46825eb9",
+      "revision": 1
+    },
+    {
+      "type": "operation.started",
+      "agent": "wren",
+      "at": "2026-10-29T20:40:36.820Z",
+      "revision": 1
+    },
+    {
+      "type": "operation.completed",
+      "agent": "wren",
+      "at": "2026-10-29T20:40:36.825Z",
+      "revision": 1
+    },
+    {
+      "type": "agent.update",
+      "agent": "wren",
+      "at": "2026-10-29T20:40:36.830Z",
+      "revision": 1
+    },
+    {
+      "type": "agent.completed",
+      "agent": "wren",
+      "at": "2026-10-29T20:40:36.835Z",
+      "loopId": "ba35f1c8-dba6-4bfe-852c-0e3a46825eb9",
+      "revision": 1,
+      "elapsedMs": 15,
+      "transitions": [
+        {
+          "from": "awaiting_inference_request",
+          "to": "awaiting_inference",
+          "at": "2026-10-29T20:40:36.820Z"
+        },
+        {
+          "from": "awaiting_inference",
+          "to": "idle",
+          "at": "2026-10-29T20:40:36.830Z"
+        },
+        {
+          "from": "idle",
+          "to": "completed",
+          "at": "2026-10-29T20:40:36.830Z"
+        }
+      ]
+    },
+    {
+      "type": "draft.approved",
+      "agent": "wren",
+      "at": "2026-10-29T20:40:36.839Z",
+      "revision": 1
+    },
+    {
+      "type": "coordination.message",
+      "agent": "wren",
+      "at": "2026-10-29T20:40:36.842Z",
+      "revision": 1
+    },
+    {
+      "type": "agent.started",
+      "agent": "quil",
+      "at": "2026-10-29T20:40:36.847Z",
+      "loopId": "1c87e275-d516-4fc4-94c2-03cbd0cc11df",
+      "revision": 1
+    },
+    {
+      "type": "operation.started",
+      "agent": "quil",
+      "at": "2026-10-29T20:40:36.851Z",
+      "revision": 1
+    },
+    {
+      "type": "operation.completed",
+      "agent": "quil",
+      "at": "2026-10-29T20:40:36.856Z",
+      "revision": 1
+    },
+    {
+      "type": "agent.update",
+      "agent": "quil",
+      "at": "2026-10-29T20:40:36.861Z",
+      "revision": 1
+    },
+    {
+      "type": "agent.completed",
+      "agent": "quil",
+      "at": "2026-10-29T20:40:36.865Z",
+      "loopId": "1c87e275-d516-4fc4-94c2-03cbd0cc11df",
+      "revision": 1,
+      "elapsedMs": 14,
+      "transitions": [
+        {
+          "from": "awaiting_inference_request",
+          "to": "awaiting_inference",
+          "at": "2026-10-29T20:40:36.851Z"
+        },
+        {
+          "from": "awaiting_inference",
+          "to": "idle",
+          "at": "2026-10-29T20:40:36.861Z"
+        },
+        {
+          "from": "idle",
+          "to": "completed",
+          "at": "2026-10-29T20:40:36.861Z"
+        }
+      ]
+    },
+    {
+      "type": "run.completed",
+      "agent": "quil",
+      "at": "2026-10-29T20:40:36.874Z"
+    }
+  ]
+}

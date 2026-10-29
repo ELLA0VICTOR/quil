@@ -75,9 +75,8 @@ try {
       if (request) {
         clearTimeout(request.timer);
         pending.delete(message.id);
-        message.error
-          ? request.reject(Error(JSON.stringify(message.error)))
-          : request.resolve(message.result);
+        if (message.error) request.reject(Error(JSON.stringify(message.error)));
+        else request.resolve(message.result);
       }
     }
     if (
@@ -396,6 +395,15 @@ try {
     (await evaluate(
       "document.querySelectorAll('.shared-outcome').length===1&&document.querySelector('.room-saved-button').textContent.includes('1')",
     ));
+  const createsBeforeFollowUp = runCreates;
+  await type("Why did you choose Fern & Co. Cleaning?");
+  await click(".composer-send");
+  await wait(150);
+  const freeFollowUp =
+    runCreates === createsBeforeFollowUp &&
+    (await evaluate(
+      "[...document.querySelectorAll('.message-crew p')].at(-1)?.textContent.includes('Search snippets can be incomplete')",
+    ));
   await send("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,
@@ -506,6 +514,7 @@ try {
     draft,
     savedDraftUpdated,
     completedRecovery,
+    freeFollowUp,
     cancelled,
     offlineHonest,
     reconnected,
@@ -576,6 +585,7 @@ try {
     !draft ||
     !savedDraftUpdated ||
     !completedRecovery ||
+    !freeFollowUp ||
     !cancelled ||
     !offlineHonest ||
     !reconnected ||

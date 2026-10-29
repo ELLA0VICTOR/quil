@@ -12,4 +12,16 @@ Completed locally on 29 October 2026 using the owner's configured OpenAI and Ser
 
 The check exposed and corrected a JSON-mode compatibility issue: the input now explicitly requests JSON as well as the separate instructions. Provider errors expose bounded code/parameter labels without forwarding raw messages. A deterministic summary was also corrected to distinguish businesses ruled out by website references from inconclusive checks. The original run is kept as recorded; it is not rewritten to imply those later changes were executed in it.
 
-Keys, run access tokens, raw provider responses and the private run-session files remain excluded from the repository. The default environment template remains in free fixture mode. A positive live outreach-draft case is still to be validated; mocked end-to-end tests cover the approval/revision path.
+## Product hardening pass
+
+A subsequent pass on 29 October used **10 model requests**, with a conservative estimate of **$0.001462875**, and **10 uncached Serper requests**. The persistent ledger across both passes totals **$0.003912375** and **12 search requests**, including the earlier retained reservations. These remain application estimates, not account billing totals.
+
+The samples covered nail technicians, mobile valeters, makeup artists and mobile hairdressers. They exposed real edge cases: a booking-platform link embedded in a result title, an excerpt running into a phone number, overly restrictive location quoting, and different observations from the same URL. These led to stricter conflict handling, bounded literal quotes, better query construction and immutable observation IDs. Earlier draft attempts are not used as evidence that the final stricter qualification policy has approved those businesses.
+
+The [earlier live review trace](live-review-trace.json) records 2,394 ms of research/review overlap and an inconclusive hairdresser result. Inspecting its sources exposed a further identity bug: a different salon's Facebook thread mentioned the candidate in a snippet, causing its booking link to be attributed to the wrong business. Review now requires the business name in the result title or a matching known business website, rather than trusting snippet mentions alone. A regression test covers this case.
+
+The [final live run metadata](live-run-trace.json) records the corrected positive path for [Charlotte's Mobile Hairdressing](https://www.facebook.com/charhairdresser/). The business's own titled profile described message-based bookings. Discovery, research and search records were reused from cache; one new GPT-6 Luna writing request cost an estimated **$0.00010550**, with **zero new search requests**. The introduction quotes the source and asks whether help would be useful; it does not claim the business lacks a website or needs a replacement.
+
+A browser then restored this completed run and verified the exact server answer, exact editable introduction and original source link, with no additional run creation and no runtime errors. This validates a source-backed introduction, not buyer interest or a sales outcome. Injected-provider end-to-end tests additionally cover local correction of an ungrounded draft without an extra model request.
+
+Keys, run access tokens, raw provider responses and private run-session files remain excluded from the repository. The default environment template remains in free fixture mode. No deployment, outreach or advertising spend was performed.

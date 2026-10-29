@@ -3,6 +3,13 @@ import { setTimeout as delay } from "node:timers/promises";
 import type { Config } from "./config.ts";
 import { assertLiveConfigured } from "./config.ts";
 import { Store } from "./store.ts";
+import {
+  normalized,
+  standaloneWebsite,
+  reviewCandidate,
+  groundedDraft,
+  acceptableDraft,
+} from "./evidence.ts";
 import type {
   AgentId,
   Brief,
@@ -28,6 +35,7 @@ export type TaskResult = {
   drafts?: Draft[];
   text?: string;
   sources?: Source[];
+  corrections?: { candidateId: string; reason: string }[];
 };
 export interface TaskProvider {
   execute(
@@ -54,8 +62,6 @@ const list = (value: unknown, max = 3): unknown[] => {
 };
 const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
-const normalized = (s: string) =>
-  s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 function safeUrl(value: unknown): string {
   const url = new URL(text(value, 2000));
   if (!/^https?:$/.test(url.protocol) || url.username || url.password)
@@ -92,7 +98,7 @@ async function readJson(response: Response, max = 500_000): Promise<unknown> {
     // Only bounded machine-readable labels are exposed. Provider messages can
     // echo input or credentials, so do not forward them to the UI or logs.
     const label = (value: unknown) =>
-      typeof value === "string" && /^[a-zA-Z0-9_.\[\]-]{1,80}$/.test(value)
+      typeof value === "string" && /^[a-zA-Z0-9_.[\]-]{1,80}$/.test(value)
         ? value
         : undefined;
     const code = label(value?.error?.code),
@@ -203,7 +209,7 @@ export class SerperSearch {
   ) {}
   async search(query: string, signal: AbortSignal): Promise<Source[]> {
     assertLiveConfigured(this.config);
-    const key = `search:${digest(query.toLowerCase())}`;
+    const key = `search:v2:${digest(query.toLowerCase())}`;
     const cached = this.store.cached<Source[]>(key);
     if (cached) return cached;
     this.store.reserve(this.runId, 0, "search", this.config);
@@ -227,7 +233,7 @@ export class SerperSearch {
         const row = object(item),
           url = safeUrl(row.link);
         return {
-          id: `source-${digest(url).slice(0, 16)}`,
+          id: `source-${digest(JSON.stringify([url, row.title, row.snippet, "search_snippet"])).slice(0, 16)}`,
           url,
           title: text(row.title, 300),
           observation:
@@ -247,7 +253,7 @@ export class SerperSearch {
       ) {
         const url = safeUrl(graph.website);
         sources.push({
-          id: `source-${digest(url).slice(0, 16)}`,
+          id: `source-${digest(JSON.stringify([url, graph.title, graph.description, "website_reference"])).slice(0, 16)}`,
           url,
           title: text(graph.title, 300),
           observation:
@@ -287,15 +293,15 @@ export class LiveProvider implements TaskProvider {
     const { brief, candidates } = input;
     if (agent === "pip") {
       const sources = await this.search.search(
-        `${brief.category} businesses in ${brief.location} contact booking`,
+        `${brief.category} in ${brief.location} ("message to book" OR "DM to book" OR "WhatsApp" OR "call to book") -inurl:reel -inurl:reels -inurl:/p/`,
         signal,
       );
       const raw = await this.ai.call(
-        'Extract actual individual businesses, not directories or articles. JSON: {"candidates":[{"name":string,"website":string|null,"sourceIds":string[]}]}. Use only supplied sources, at most the requested limit. A missing website field means unknown.',
+        'Extract actual individual businesses, not directories or articles. JSON: {"candidates":[{"name":string,"website":string|null,"sourceIds":string[]}]}. Use only supplied sources, at most the requested limit. Prefer named businesses whose records explicitly describe manual bookings in the requested area. Never extract a directory, listicle or a social platform as a business. A missing website field means unknown; social/directory URLs are not standalone websites.',
         { brief, sources },
         signal,
       );
-      const extracted = list(raw.candidates, brief.limit).map((item) => {
+      const extracted = list(raw.candidates, brief.limit).flatMap((item) => {
         const value = object(item),
           name = text(value.name, 120);
         const ids = this.sourceIds(value.sourceIds, sources);
@@ -304,16 +310,17 @@ export class LiveProvider implements TaskProvider {
           !sources.some(
             (s) =>
               ids.includes(s.id) &&
-              normalized(s.title + " " + s.observation).includes(
-                normalized(name),
-              ),
+              normalized(
+                s.title + " " + s.observation + " " + new URL(s.url).pathname,
+              ).includes(normalized(name)),
           )
         )
-          throw Error("Untraceable business name");
+          return []; // Keep traceable candidates when one extraction is unsupported.
         let website: string | null = null;
         if (value.website) {
           const url = safeUrl(value.website);
           if (
+            standaloneWebsite(url) &&
             sources.some(
               (s) =>
                 ids.includes(s.id) &&
@@ -323,7 +330,7 @@ export class LiveProvider implements TaskProvider {
             website = url;
         }
         return {
-          id: `business-${digest(name.toLowerCase()).slice(0, 12)}`,
+          id: `business-${digest(normalized(name) + ":" + normalized(brief.location)).slice(0, 12)}`,
           name,
           website,
           sourceIds: ids,
@@ -333,6 +340,7 @@ export class LiveProvider implements TaskProvider {
       return { candidates: unique, sources };
     }
     if (agent === "milo") {
+      if (!candidates.length) return { findings: [] };
       const raw = await this.ai.call(
         'Research the supplied businesses using only their source records. JSON: {"findings":[{"candidateId":string,"summary":string,"sourceIds":string[]}]}. One short observation each; distinguish snippets from verified website content. Never infer no website from missing fields.',
         input,
@@ -361,65 +369,34 @@ export class LiveProvider implements TaskProvider {
       const sources: Source[] = [];
       for (const candidate of candidates) {
         const records = await this.search.search(
-          `"${candidate.name}" "${brief.location}" website contact booking`,
+          `"${candidate.name}" ${brief.location.split(",")[0].trim()} website contact booking`,
           signal,
         );
         sources.push(...records);
-        const related = records.filter((s) =>
-          normalized(s.title + " " + s.observation).includes(
-            normalized(candidate.name),
-          ),
-        );
-        const websiteReference = related.find(
-          (s) =>
-            s.kind === "website_reference" &&
-            normalized(s.title) === normalized(candidate.name),
-        );
-        const booking = related.find(
-          (s) =>
-            /\b(book|booking|appointments?|enquir|availability)\w*/i.test(
-              s.observation,
-            ) && /\b(message|social|facebook|instagram)\b/i.test(s.observation),
-        );
         decisions.push(
-          candidate.website || websiteReference
-            ? {
-                candidateId: candidate.id,
-                verdict: "ruled_out",
-                reason:
-                  "Search records link this business to an existing website. Verify the identity before any new pitch; this is not a website availability check.",
-                sourceIds: websiteReference
-                  ? [websiteReference.id]
-                  : candidate.sourceIds,
-              }
-            : booking
-              ? {
-                  candidateId: candidate.id,
-                  verdict: "opportunity",
-                  reason:
-                    "A search snippet describes social or message-based bookings. Investigate that booking flow; this does not prove there is no website.",
-                  sourceIds: [booking.id],
-                }
-              : {
-                  candidateId: candidate.id,
-                  verdict: "uncertain",
-                  reason:
-                    "Search evidence is inconclusive. Verify the business and its booking flow before making a pitch.",
-                  sourceIds: related.map((s) => s.id),
-                },
+          reviewCandidate(candidate, brief, [
+            ...input.sources.filter((source) =>
+              candidate.sourceIds.includes(source.id),
+            ),
+            ...records,
+          ]),
         );
       }
       return { decisions, sources };
     }
     if (agent === "wren") {
-      const eligible =
-        input.revision === 0
-          ? candidates
-          : candidates.filter((c) =>
-              input.decisions.some(
-                (d) => d.candidateId === c.id && d.verdict === "opportunity",
-              ),
-            );
+      // Prepare locally while Iris works. Paid writing happens only after review,
+      // so rejected candidates never consume a speculative drafting request.
+      if (input.revision === 0)
+        return {
+          drafts: [],
+          text: "Ready to write once Iris has checked the evidence.",
+        };
+      const eligible = candidates.filter((c) =>
+        input.decisions.some(
+          (d) => d.candidateId === c.id && d.verdict === "opportunity",
+        ),
+      );
       if (!eligible.length) return { drafts: [] };
       const eligibleIds = new Set(eligible.map((c) => c.id));
       const sourceIds = new Set([
@@ -438,10 +415,11 @@ export class LiveProvider implements TaskProvider {
         sources: input.sources.filter((s) => sourceIds.has(s.id)),
       };
       const raw = await this.ai.call(
-        'Write brief editable introductions based only on supplied evidence. JSON: {"drafts":[{"candidateId":string,"text":string,"sourceIds":string[]}]}. Acknowledge uncertainty; never assert a missing/broken website. No invented contact details or promises. Do not send anything.',
+        'Write brief editable introductions based only on supplied evidence. JSON: {"drafts":[{"candidateId":string,"text":string,"sourceIds":string[]}]}. Acknowledge uncertainty; never assert a missing/broken website. Include the decision evidenceQuote verbatim in the introduction as a quote from their public profile. Ask whether help would be useful; manual booking is not proof of a pain point. No invented contact details, URLs, guarantees or claims of lost customers. Do not send anything.',
         draftInput,
         signal,
       );
+      const corrections: NonNullable<TaskResult["corrections"]> = [];
       const drafts = list(raw.drafts, 3).map((item) => {
         const v = object(item),
           c = this.candidate(v.candidateId, eligible);
@@ -454,11 +432,24 @@ export class LiveProvider implements TaskProvider {
         ]);
         if (!ids.length || ids.some((id) => !allowed.has(id)))
           throw Error("Draft needs evidence for this business");
-        return { candidateId: c.id, text: text(v.text, 1800), sourceIds: ids };
+        const decision = input.decisions.find((d) => d.candidateId === c.id)!;
+        const proposed = text(v.text, 1800);
+        const grounded = acceptableDraft(proposed, decision.evidenceQuote);
+        if (!grounded)
+          corrections.push({
+            candidateId: c.id,
+            reason:
+              "Replaced an ungrounded introduction with a source-quoted draft; no paid retry.",
+          });
+        return {
+          candidateId: c.id,
+          text: grounded ? proposed : groundedDraft(c, decision, brief.service),
+          sourceIds: [...new Set([...ids, ...decision.sourceIds])],
+        };
       });
       if (new Set(drafts.map((d) => d.candidateId)).size !== eligible.length)
         throw Error("Drafts did not cover each approved business");
-      return { drafts };
+      return { drafts, corrections };
     }
     // The final decision is assembled from reviewed facts, never model ranking.
     const eligible = input.decisions.filter((d) => d.verdict === "opportunity");
@@ -470,7 +461,13 @@ export class LiveProvider implements TaskProvider {
         .join(", ");
     return {
       text: eligible.length
-        ? `Start by reviewing ${eligible.map((d) => candidates.find((c) => c.id === d.candidateId)!.name).join(", ")}. The evidence suggests a booking-flow opportunity, not proof of a missing website. Review the sources and edit the introduction before using it.`
+        ? eligible
+            .map(
+              (d) =>
+                `${candidates.find((c) => c.id === d.candidateId)!.name} is worth a conversation: ${d.evidenceQuote ? `a public search record says "${d.evidenceQuote}".` : "the records describe manual bookings."} A booking page might help alongside their current setup; ask how it works for them before making a pitch.`,
+            )
+            .join("\n\n") +
+          " Review the sources and edit the introduction before using it."
         : !candidates.length
           ? "No individual business was identified from these search records. Try a more specific business type or area."
           : uncertain.length

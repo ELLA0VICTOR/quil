@@ -118,6 +118,14 @@ export default function ProspectEntry({
                   )}
                 </h4>
                 <p>{source.observation}</p>
+                {!source.fictional &&
+                  Number.isFinite(Date.parse(source.observedAt)) && (
+                    <small>
+                      Search record retrieved{" "}
+                      {new Date(source.observedAt).toLocaleString()}. This is
+                      not the page's publication date.
+                    </small>
+                  )}
               </section>
             </div>
           ))}

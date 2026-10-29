@@ -201,6 +201,7 @@
   border: 0;
 }
 .answer-prose > p {
+  white-space: pre-line;
   font-size: 15px;
   line-height: 1.95;
   overflow-wrap: anywhere;

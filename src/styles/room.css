@@ -524,6 +524,13 @@
   color: #526e90;
   margin-top: 20px;
 }
+.lead-evidence section > small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.7;
+  margin-top: 8px;
+  opacity: 0.7;
+}
 .lead-introduction {
   padding: 25px 0 7px 13px;
   animation: fade-up 0.3s;

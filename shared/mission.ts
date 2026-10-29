@@ -14,6 +14,7 @@ export type PreparedBrief = {
   context: Partial<Brief>;
   missing: BriefField[];
   question?: string;
+  questionField?: BriefField;
   brief?: Brief;
 };
 export type Source = {
@@ -41,6 +42,7 @@ export type Decision = {
   verdict: "opportunity" | "uncertain" | "ruled_out";
   reason: string;
   sourceIds: string[];
+  evidenceQuote?: string;
 };
 export type Draft = { candidateId: string; text: string; sourceIds: string[] };
 export type Outcome = {

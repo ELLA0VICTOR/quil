@@ -83,20 +83,20 @@ export function prepareBrief(
     (key) => !context[key],
   );
   if (missing.length) {
-    const question =
-      missing.includes("category") && missing.includes("location")
-        ? "Which kind of business would you like to work with, and in which city?"
-        : missing.includes("category")
-          ? "Which kind of business should we look for?"
-          : missing.includes("location")
-            ? "Which city or area should we search?"
-            : "What service do you offer? Quil currently focuses on websites and booking flows.";
-    return { context, missing, question };
+    const questionField = missing[0];
+    const question = {
+      category: "Which kind of business should we look for?",
+      location: "Which city or area should we search?",
+      service:
+        "What service do you offer? Quil currently focuses on websites and booking flows.",
+    }[questionField];
+    return { context, missing, question, questionField };
   }
   if (!/\b(websites?|web|booking|appointments?)\b/i.test(context.service!))
     return {
       context: { ...context, service: undefined },
       missing: ["service"],
+      questionField: "service",
       question:
         "Quil currently looks for website and booking-flow opportunities. Which of those services do you offer?",
     };

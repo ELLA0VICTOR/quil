@@ -265,11 +265,16 @@ export class MissionEngine {
             ? `${result.decisions?.filter((d) => d.verdict === "opportunity").length ?? 0} supported; ${result.decisions?.filter((d) => d.verdict === "uncertain").length ?? 0} inconclusive; ${result.decisions?.filter((d) => d.verdict === "ruled_out").length ?? 0} set aside.`
             : agent === "wren"
               ? revision === 0
-                ? "Provisional writing. Waiting for review."
+                ? (result.text ?? "Provisional writing. Waiting for review.")
                 : count
                   ? `${count} reviewed introduction${count === 1 ? "" : "s"} ready.`
                   : "No supported pitch to draft."
               : "The reviewed answer is ready.";
+    if (result.corrections?.length)
+      this.emit("draft.corrected", agent, {
+        corrections: result.corrections,
+        revision,
+      });
     this.emit("agent.update", agent, { text: note, revision });
     this.emit("agent.completed", agent, {
       loopId: loop.id,

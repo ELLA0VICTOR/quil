@@ -420,6 +420,45 @@ test("search caches records and enforces its independent request allowance", asy
   }
 });
 
+test("different observations from one URL keep distinct provenance instead of overwriting each other", async () => {
+  const directory = temporary(),
+    store = new Store(directory);
+  let count = 0;
+  const search = new SerperSearch(
+    readConfig(liveEnv),
+    store,
+    "provenance",
+    async () =>
+      Response.json({
+        organic: [
+          {
+            title: "Same business",
+            link: "https://example.com/business",
+            snippet:
+              ++count === 1
+                ? "Message us to book."
+                : "Book online with Fresha.",
+          },
+        ],
+      }),
+  );
+  try {
+    const first = (
+      await search.search("discovery", new AbortController().signal)
+    )[0];
+    const second = (
+      await search.search("independent review", new AbortController().signal)
+    )[0];
+    assert.equal(first.url, second.url);
+    assert.notEqual(first.id, second.id);
+    assert.equal(first.observation, "Message us to book.");
+    assert.equal(second.observation, "Book online with Fresha.");
+  } finally {
+    store.close();
+    remove(directory);
+  }
+});
+
 test("provider errors expose safe parameter labels without echoing raw messages", async () => {
   const directory = temporary(),
     store = new Store(directory),
@@ -616,7 +655,7 @@ test("a second API cannot recover or overwrite a running owner's data directory"
   }
 });
 
-test("live adapters use source records, and a late website reference removes its provisional draft", async () => {
+test("live adapters qualify before paid writing and correct an ungrounded introduction locally", async () => {
   const directory = temporary(),
     store = new Store(directory),
     config = readConfig(liveEnv);
@@ -738,7 +777,7 @@ test("live adapters use source records, and a late website reference removes its
     await engine.settled;
     assert.equal(run.status, "completed", run.error);
     assert.equal(searchCalls, 4);
-    assert.equal(modelCalls, 4);
+    assert.equal(modelCalls, 3);
     const sunday = run.outcome!.candidates.find((c) => c.name === names[2])!;
     assert.equal(
       run.outcome!.decisions.find((d) => d.candidateId === sunday.id)?.verdict,
@@ -749,7 +788,14 @@ test("live adapters use source records, and a late website reference removes its
       run.outcome!.drafts.some((d) => d.candidateId === sunday.id),
       false,
     );
-    assert.ok(store.events(run.id).some((e) => e.type === "draft.invalidated"));
+    assert.ok(
+      run.outcome!.drafts[0].text.includes(
+        "message us for booking availability",
+      ),
+    );
+    assert.ok(
+      store.events(run.id).some((event) => event.type === "draft.corrected"),
+    );
     assert.ok(run.outcome!.sources.some((s) => s.kind === "website_reference"));
   } finally {
     store.close();

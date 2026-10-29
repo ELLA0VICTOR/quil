@@ -13,6 +13,7 @@ import type { MissionView, Prospect } from "../lib/run-view";
 import { useCrewRuns } from "../hooks/useCrewRuns";
 import { prepareRun } from "../lib/api";
 import type { PreparedBrief } from "../../shared/mission";
+import { followUp } from "../lib/follow-up";
 
 const exampleRequest =
   "Find cleaning businesses in Manchester that could use a simpler booking website.";
@@ -130,8 +131,14 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     try {
       const prepared = await prepareRun({
         request,
-        context: pending?.context,
-        answering: pending?.missing,
+        context:
+          pending?.context ??
+          (session.lastMission?.mode === "live"
+            ? { service: session.lastMission.brief?.service }
+            : undefined),
+        answering: pending?.questionField
+          ? [pending.questionField]
+          : pending?.missing,
       });
       if (version !== prepareVersion.current) return;
       if (!prepared.brief) {
@@ -202,6 +209,14 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         "This search is already underway. Pause it, or start a new conversation to change the brief.",
       );
       return;
+    }
+    if (!pending && session.lastMission?.outcome) {
+      const reply = followUp(request, session.lastMission.outcome);
+      if (reply) {
+        session.say("you", request);
+        session.say("quil", reply);
+        return;
+      }
     }
     void begin(request);
   };
@@ -274,21 +289,40 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
   const exportSaved = () => {
     const cell = (value: string) =>
       '"' +
-      (/^[=+\-@\t\r]/.test(value) ? "'" + value : value).replaceAll('"', '""') +
+      (/^\s*[=+\-@]|^[\t\r]/.test(value) ? "'" + value : value).replaceAll(
+        '"',
+        '""',
+      ) +
       '"';
     const rows = [
-      ["Business", "Decision", "Location", "Data"],
+      [
+        "Business",
+        "Decision",
+        "Location",
+        "Introduction",
+        "Source URLs",
+        "Evidence",
+        "Retrieved at",
+        "Data",
+      ],
       ...saved.map((p) => [
         p.name,
         p.note,
         p.location,
+        p.draft,
+        p.sources.map((source) => source.url).join("\n"),
+        p.sources.map((source) => source.observation).join("\n"),
+        p.sources.map((source) => source.observedAt).join("\n"),
         p.fictional ? "Fictional example" : "Search evidence",
       ]),
     ];
     const url = URL.createObjectURL(
-      new Blob([rows.map((row) => row.map(cell).join(",")).join("\r\n")], {
-        type: "text/csv;charset=utf-8;",
-      }),
+      new Blob(
+        ["\ufeff", rows.map((row) => row.map(cell).join(",")).join("\r\n")],
+        {
+          type: "text/csv;charset=utf-8;",
+        },
+      ),
     );
     const link = document.createElement("a");
     link.href = url;

@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "node scripts/dev.mjs",
     "dev:api": "tsx watch server/index.ts",
     "start:api": "tsx server/index.ts",
     "demo:api": "tsx scripts/backend-demo.ts",
     "check:api": "tsc -p server/tsconfig.json",
     "test:api": "tsx --test server/tests/*.test.ts",
     "test": "npm run test:api",
+    "test:browser": "node --import tsx scripts/browser-check.mjs",
     "build": "tsc -b && tsc -p server/tsconfig.json && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
