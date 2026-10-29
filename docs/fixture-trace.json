@@ -1,0 +1,633 @@
+{
+  "description": "Actual Mozaik execution using fictional records and deterministic fixture providers. No paid inference or search.",
+  "framework": "@mozaik-ai/core@4.2.0-beta.18",
+  "overlapMs": 77,
+  "modelCostUsd": 0,
+  "searchRequests": 0,
+  "events": [
+    {
+      "id": 1,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.143Z",
+      "type": "run.started",
+      "agent": "quil",
+      "data": {
+        "mode": "fixture",
+        "fictional": true
+      }
+    },
+    {
+      "id": 2,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.150Z",
+      "type": "coordination.message",
+      "agent": "quil",
+      "data": {
+        "type": "mission.started"
+      }
+    },
+    {
+      "id": 3,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.156Z",
+      "type": "agent.started",
+      "agent": "pip",
+      "data": {
+        "loopId": "b452aca0-28c7-4d40-ac66-c30a8b301593",
+        "revision": 0
+      }
+    },
+    {
+      "id": 4,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.162Z",
+      "type": "operation.started",
+      "agent": "pip",
+      "data": {
+        "revision": 0
+      }
+    },
+    {
+      "id": 5,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.244Z",
+      "type": "operation.completed",
+      "agent": "pip",
+      "data": {
+        "revision": 0
+      }
+    },
+    {
+      "id": 6,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.250Z",
+      "type": "agent.completed",
+      "agent": "pip",
+      "data": {
+        "loopId": "b452aca0-28c7-4d40-ac66-c30a8b301593",
+        "revision": 0,
+        "elapsedMs": 90,
+        "transitions": [
+          {
+            "from": "awaiting_inference_request",
+            "to": "awaiting_inference",
+            "at": "2026-10-29T18:44:41.161Z"
+          },
+          {
+            "from": "awaiting_inference",
+            "to": "idle",
+            "at": "2026-10-29T18:44:41.249Z"
+          },
+          {
+            "from": "idle",
+            "to": "completed",
+            "at": "2026-10-29T18:44:41.250Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.255Z",
+      "type": "coordination.message",
+      "agent": "pip",
+      "data": {
+        "type": "discovery.ready"
+      }
+    },
+    {
+      "id": 8,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.261Z",
+      "type": "agent.started",
+      "agent": "milo",
+      "data": {
+        "loopId": "503f7388-5bf3-46e8-9d7d-a9e14b1250ac",
+        "revision": 0
+      }
+    },
+    {
+      "id": 9,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.266Z",
+      "type": "agent.started",
+      "agent": "iris",
+      "data": {
+        "loopId": "cb027219-6e88-413f-8c93-91676c58758e",
+        "revision": 0
+      }
+    },
+    {
+      "id": 10,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.271Z",
+      "type": "operation.started",
+      "agent": "milo",
+      "data": {
+        "revision": 0
+      }
+    },
+    {
+      "id": 11,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.276Z",
+      "type": "operation.started",
+      "agent": "iris",
+      "data": {
+        "revision": 0
+      }
+    },
+    {
+      "id": 12,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.353Z",
+      "type": "operation.completed",
+      "agent": "milo",
+      "data": {
+        "revision": 0
+      }
+    },
+    {
+      "id": 13,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.358Z",
+      "type": "agent.completed",
+      "agent": "milo",
+      "data": {
+        "loopId": "503f7388-5bf3-46e8-9d7d-a9e14b1250ac",
+        "revision": 0,
+        "elapsedMs": 92,
+        "transitions": [
+          {
+            "from": "awaiting_inference_request",
+            "to": "awaiting_inference",
+            "at": "2026-10-29T18:44:41.271Z"
+          },
+          {
+            "from": "awaiting_inference",
+            "to": "idle",
+            "at": "2026-10-29T18:44:41.358Z"
+          },
+          {
+            "from": "idle",
+            "to": "completed",
+            "at": "2026-10-29T18:44:41.358Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.362Z",
+      "type": "coordination.message",
+      "agent": "milo",
+      "data": {
+        "type": "research.ready"
+      }
+    },
+    {
+      "id": 15,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.367Z",
+      "type": "agent.started",
+      "agent": "wren",
+      "data": {
+        "loopId": "1d8e7528-1656-4085-be38-c00ad85e9f41",
+        "revision": 0
+      }
+    },
+    {
+      "id": 16,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.371Z",
+      "type": "operation.started",
+      "agent": "wren",
+      "data": {
+        "revision": 0
+      }
+    },
+    {
+      "id": 17,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.446Z",
+      "type": "operation.completed",
+      "agent": "wren",
+      "data": {
+        "revision": 0
+      }
+    },
+    {
+      "id": 18,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.451Z",
+      "type": "agent.completed",
+      "agent": "wren",
+      "data": {
+        "loopId": "1d8e7528-1656-4085-be38-c00ad85e9f41",
+        "revision": 0,
+        "elapsedMs": 80,
+        "transitions": [
+          {
+            "from": "awaiting_inference_request",
+            "to": "awaiting_inference",
+            "at": "2026-10-29T18:44:41.371Z"
+          },
+          {
+            "from": "awaiting_inference",
+            "to": "idle",
+            "at": "2026-10-29T18:44:41.451Z"
+          },
+          {
+            "from": "idle",
+            "to": "completed",
+            "at": "2026-10-29T18:44:41.451Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.455Z",
+      "type": "draft.provisional",
+      "agent": "wren",
+      "data": {
+        "candidateIds": [
+          "fern",
+          "sunday"
+        ],
+        "revision": 0
+      }
+    },
+    {
+      "id": 20,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.525Z",
+      "type": "operation.completed",
+      "agent": "iris",
+      "data": {
+        "revision": 0
+      }
+    },
+    {
+      "id": 21,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.530Z",
+      "type": "agent.completed",
+      "agent": "iris",
+      "data": {
+        "loopId": "cb027219-6e88-413f-8c93-91676c58758e",
+        "revision": 0,
+        "elapsedMs": 259,
+        "transitions": [
+          {
+            "from": "awaiting_inference_request",
+            "to": "awaiting_inference",
+            "at": "2026-10-29T18:44:41.271Z"
+          },
+          {
+            "from": "awaiting_inference",
+            "to": "idle",
+            "at": "2026-10-29T18:44:41.529Z"
+          },
+          {
+            "from": "idle",
+            "to": "completed",
+            "at": "2026-10-29T18:44:41.530Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.534Z",
+      "type": "review.completed",
+      "agent": "iris",
+      "data": {
+        "decisions": [
+          {
+            "candidateId": "fern",
+            "verdict": "opportunity",
+            "reason": "The fictional profile supports a booking-flow conversation.",
+            "sourceIds": [
+              "fixture-fern"
+            ]
+          },
+          {
+            "candidateId": "clearwell",
+            "verdict": "uncertain",
+            "reason": "A single timeout proves no persistent problem.",
+            "sourceIds": [
+              "fixture-clearwell"
+            ]
+          },
+          {
+            "candidateId": "sunday",
+            "verdict": "ruled_out",
+            "reason": "An existing website was found. The no-website pitch is withdrawn.",
+            "sourceIds": [
+              "fixture-sunday"
+            ]
+          }
+        ],
+        "withdrawnDrafts": [
+          "sunday"
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.538Z",
+      "type": "draft.invalidated",
+      "agent": "iris",
+      "data": {
+        "candidateIds": [
+          "sunday"
+        ],
+        "reason": "Independent review contradicted the provisional pitch"
+      }
+    },
+    {
+      "id": 24,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.542Z",
+      "type": "coordination.message",
+      "agent": "iris",
+      "data": {
+        "type": "review.ready",
+        "revision": 1
+      }
+    },
+    {
+      "id": 25,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.548Z",
+      "type": "agent.started",
+      "agent": "wren",
+      "data": {
+        "loopId": "1fb15fd2-419b-43d4-818a-c240b38b4c7d",
+        "revision": 1
+      }
+    },
+    {
+      "id": 26,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.552Z",
+      "type": "operation.started",
+      "agent": "wren",
+      "data": {
+        "revision": 1
+      }
+    },
+    {
+      "id": 27,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.635Z",
+      "type": "operation.completed",
+      "agent": "wren",
+      "data": {
+        "revision": 1
+      }
+    },
+    {
+      "id": 28,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.642Z",
+      "type": "agent.completed",
+      "agent": "wren",
+      "data": {
+        "loopId": "1fb15fd2-419b-43d4-818a-c240b38b4c7d",
+        "revision": 1,
+        "elapsedMs": 90,
+        "transitions": [
+          {
+            "from": "awaiting_inference_request",
+            "to": "awaiting_inference",
+            "at": "2026-10-29T18:44:41.552Z"
+          },
+          {
+            "from": "awaiting_inference",
+            "to": "idle",
+            "at": "2026-10-29T18:44:41.642Z"
+          },
+          {
+            "from": "idle",
+            "to": "completed",
+            "at": "2026-10-29T18:44:41.642Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.645Z",
+      "type": "draft.approved",
+      "agent": "wren",
+      "data": {
+        "candidateIds": [
+          "fern"
+        ],
+        "revision": 1
+      }
+    },
+    {
+      "id": 30,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.649Z",
+      "type": "coordination.message",
+      "agent": "wren",
+      "data": {
+        "type": "draft.ready",
+        "revision": 1
+      }
+    },
+    {
+      "id": 31,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.653Z",
+      "type": "agent.started",
+      "agent": "quil",
+      "data": {
+        "loopId": "f043d02a-6c09-44a4-a441-f9b66950dfcb",
+        "revision": 1
+      }
+    },
+    {
+      "id": 32,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.659Z",
+      "type": "operation.started",
+      "agent": "quil",
+      "data": {
+        "revision": 1
+      }
+    },
+    {
+      "id": 33,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.743Z",
+      "type": "operation.completed",
+      "agent": "quil",
+      "data": {
+        "revision": 1
+      }
+    },
+    {
+      "id": 34,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.747Z",
+      "type": "agent.completed",
+      "agent": "quil",
+      "data": {
+        "loopId": "f043d02a-6c09-44a4-a441-f9b66950dfcb",
+        "revision": 1,
+        "elapsedMs": 89,
+        "transitions": [
+          {
+            "from": "awaiting_inference_request",
+            "to": "awaiting_inference",
+            "at": "2026-10-29T18:44:41.659Z"
+          },
+          {
+            "from": "awaiting_inference",
+            "to": "idle",
+            "at": "2026-10-29T18:44:41.747Z"
+          },
+          {
+            "from": "idle",
+            "to": "completed",
+            "at": "2026-10-29T18:44:41.747Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
+      "at": "2026-10-29T18:44:41.757Z",
+      "type": "run.completed",
+      "agent": "quil",
+      "data": {
+        "outcome": {
+          "text": "In this fictional example, start with Fern & Co. Cleaning: its social booking flow gives you a concrete reason to say hello. Clearwell Home Care needs another check. Sunday Cleaning Studio already has a website, so the original pitch was withdrawn.",
+          "candidates": [
+            {
+              "id": "fern",
+              "name": "Fern & Co. Cleaning",
+              "website": null,
+              "sourceIds": [
+                "fixture-fern"
+              ]
+            },
+            {
+              "id": "clearwell",
+              "name": "Clearwell Home Care",
+              "website": null,
+              "sourceIds": [
+                "fixture-clearwell"
+              ]
+            },
+            {
+              "id": "sunday",
+              "name": "Sunday Cleaning Studio",
+              "website": null,
+              "sourceIds": [
+                "fixture-sunday"
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "candidateId": "fern",
+              "summary": "Social booking enquiries.",
+              "sourceIds": [
+                "fixture-fern"
+              ]
+            },
+            {
+              "candidateId": "clearwell",
+              "summary": "Website check timed out; needs another check.",
+              "sourceIds": [
+                "fixture-clearwell"
+              ]
+            },
+            {
+              "candidateId": "sunday",
+              "summary": "Initial listing lacks a website field; existence is unknown.",
+              "sourceIds": [
+                "fixture-sunday"
+              ]
+            }
+          ],
+          "decisions": [
+            {
+              "candidateId": "fern",
+              "verdict": "opportunity",
+              "reason": "The fictional profile supports a booking-flow conversation.",
+              "sourceIds": [
+                "fixture-fern"
+              ]
+            },
+            {
+              "candidateId": "clearwell",
+              "verdict": "uncertain",
+              "reason": "A single timeout proves no persistent problem.",
+              "sourceIds": [
+                "fixture-clearwell"
+              ]
+            },
+            {
+              "candidateId": "sunday",
+              "verdict": "ruled_out",
+              "reason": "An existing website was found. The no-website pitch is withdrawn.",
+              "sourceIds": [
+                "fixture-sunday"
+              ]
+            }
+          ],
+          "drafts": [
+            {
+              "candidateId": "fern",
+              "text": "Hi Fern & Co. Cleaning team,\n\nI came across your booking profile. I offer website design and wondered whether making booking enquiries simpler would be useful. Would you be open to a quick conversation?\n\n[Your name]",
+              "sourceIds": [
+                "fixture-fern"
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "id": "fixture-fern",
+              "url": "https://example.invalid/fern",
+              "title": "Fictional Fern booking profile",
+              "observation": "Fern & Co. Cleaning asks customers to message for availability.",
+              "observedAt": "2026-10-29T18:44:41.244Z",
+              "fictional": true
+            },
+            {
+              "id": "fixture-clearwell",
+              "url": "https://example.invalid/clearwell",
+              "title": "Fictional Clearwell website check",
+              "observation": "One website check timed out. This is inconclusive.",
+              "observedAt": "2026-10-29T18:44:41.244Z",
+              "fictional": true
+            },
+            {
+              "id": "fixture-sunday",
+              "url": "https://example.invalid/sunday",
+              "title": "Fictional Sunday follow-up",
+              "observation": "The follow-up confirms an existing website; withdraw the no-website pitch.",
+              "observedAt": "2026-10-29T18:44:41.244Z",
+              "fictional": true
+            }
+          ]
+        },
+        "usage": []
+      }
+    }
+  ]
+}

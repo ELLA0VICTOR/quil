@@ -43,6 +43,7 @@ artifacts/
 .vercel/
 .netlify/
 .cache/
+.quil-data/
 .vite/
 .eslintcache
 

@@ -5,11 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev:api": "tsx watch server/index.ts",
+    "start:api": "tsx server/index.ts",
+    "demo:api": "tsx scripts/backend-demo.ts",
+    "check:api": "tsc -p server/tsconfig.json",
+    "test:api": "tsx --test server/tests/*.test.ts",
+    "test": "npm run test:api",
+    "build": "tsc -b && tsc -p server/tsconfig.json && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "dependencies": {
+    "@mozaik-ai/core": "4.2.0-beta.18",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.186.1"
@@ -18,10 +28,11 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.89.0",
+    "tsx": "4.23.15",
     "typescript": "~7.0.2",
-    "vite": "^8.3.5",
-    "@types/three": "^0.186.0"
+    "vite": "^8.3.5"
   }
 }
