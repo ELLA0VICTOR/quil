@@ -10,6 +10,7 @@ import { Store } from "../store.ts";
 import { createApi } from "../http.ts";
 import { OpenAIJson, SerperSearch, LiveProvider } from "../providers.ts";
 import { MissionEngine } from "../engine.ts";
+import type { TaskInput } from "../providers.ts";
 import type {
   CreatedRun,
   RunEvent,
@@ -333,6 +334,7 @@ test("OpenAI transport caps output, disables storage, caches and never retries a
     assert.equal(body.store, false);
     assert.equal(body.reasoning.effort, "none");
     assert.equal(body.tools, undefined);
+    assert.equal(JSON.parse(body.input).responseFormat, "JSON");
     return Response.json({
       status: "completed",
       usage: { input_tokens: 20, output_tokens: 10 },
@@ -412,6 +414,115 @@ test("search caches records and enforces its independent request allowance", asy
     assert.equal(calls, 1);
     await assert.rejects(search.search("another query", signal), /usage limit/);
     assert.equal(calls, 1);
+  } finally {
+    store.close();
+    remove(directory);
+  }
+});
+
+test("provider errors expose safe parameter labels without echoing raw messages", async () => {
+  const directory = temporary(),
+    store = new Store(directory),
+    config = readConfig(liveEnv);
+  try {
+    const jsonError = new OpenAIJson(config, store, "bad-input", async () =>
+      Response.json(
+        {
+          error: {
+            message: "private-upstream-message",
+            param: "input",
+            type: "invalid_request_error",
+            code: null,
+          },
+        },
+        { status: 400 },
+      ),
+    );
+    await assert.rejects(
+      jsonError.call("Test", {}, new AbortController().signal),
+      (error) =>
+        error instanceof Error &&
+        error.message.includes("parameter input") &&
+        !error.message.includes("private-upstream-message"),
+    );
+    const htmlError = new OpenAIJson(
+      config,
+      store,
+      "bad-html",
+      async () => new Response("private-upstream-message", { status: 502 }),
+    );
+    await assert.rejects(
+      htmlError.call("Test", {}, new AbortController().signal),
+      (error) =>
+        error instanceof Error &&
+        error.message.includes("502") &&
+        !error.message.includes("private-upstream-message"),
+    );
+  } finally {
+    store.close();
+    remove(directory);
+  }
+});
+
+test("the final summary separates ruled-out records from inconclusive checks without another model call", async () => {
+  const directory = temporary(),
+    store = new Store(directory),
+    config = readConfig(liveEnv);
+  try {
+    const provider = new LiveProvider(config, store, "summary", async () => {
+      throw Error("A deterministic summary must not call a provider");
+    });
+    const input: TaskInput = {
+      brief: {
+        request: "Find a website opportunity",
+        category: "cleaning",
+        location: "Manchester",
+        service: "website design",
+        limit: 1,
+      },
+      revision: 1,
+      candidates: [
+        {
+          id: "one",
+          name: "Known Site Business",
+          website: "https://example.org/",
+          sourceIds: ["source"],
+        },
+      ],
+      decisions: [
+        {
+          candidateId: "one",
+          verdict: "ruled_out",
+          reason: "Website reference",
+          sourceIds: ["source"],
+        },
+      ],
+      findings: [],
+      sources: [],
+    };
+    const excluded = await provider.execute(
+      "quil",
+      input,
+      new AbortController().signal,
+    );
+    assert.match(excluded.text!, /existing website/);
+    assert.doesNotMatch(excluded.text!, /inconclusive|another check/);
+    input.decisions[0].verdict = "uncertain";
+    const uncertain = await provider.execute(
+      "quil",
+      input,
+      new AbortController().signal,
+    );
+    assert.match(uncertain.text!, /another check/);
+    input.candidates = [];
+    input.decisions = [];
+    const empty = await provider.execute(
+      "quil",
+      input,
+      new AbortController().signal,
+    );
+    assert.match(empty.text!, /No individual business/);
+    assert.deepEqual(store.usage("summary"), []);
   } finally {
     store.close();
     remove(directory);
@@ -558,7 +669,7 @@ test("live adapters use source records, and a late website reference removes its
     }
     assert.equal(url, "https://api.openai.com/v1/responses");
     modelCalls++;
-    const input = JSON.parse(payload.input);
+    const input = JSON.parse(payload.input).data;
     let answer: unknown;
     if (payload.instructions.startsWith("Extract"))
       answer = {

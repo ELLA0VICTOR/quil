@@ -3,6 +3,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Uses the already-installed browser; no browser binary is downloaded.
+const qaBase = process.env.QUIL_QA_URL || "http://127.0.0.1:4173";
+const qaHealth = await (await fetch(new URL("/api/health", qaBase))).json();
+if (qaHealth.mode !== "fixture")
+  throw Error(
+    "Full browser QA requires a fixture-mode backend; no live runs were started.",
+  );
 const root = process.cwd(),
   out = path.join(root, ".sites-runtime", "qa");
 await mkdir(out, { recursive: true });

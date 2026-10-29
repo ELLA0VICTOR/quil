@@ -105,7 +105,7 @@ Live run requests must supply `category`, `location`, and `service`; optional `l
 
 Copy `.env.example` to the ignored `.env` file and edit it locally. Never put keys in `VITE_` variables or paste them into the chat.
 
-Live execution requires **both** `QUIL_MODE=live` and `QUIL_ENABLE_LIVE=true`, plus `OPENAI_API_KEY` and `SERPER_API_KEY`. No live requests have been made during implementation; account access and real-data quality still require a small integration run with the owner's keys.
+Live execution requires **both** `QUIL_MODE=live` and `QUIL_ENABLE_LIVE=true`, plus `OPENAI_API_KEY` and `SERPER_API_KEY`. A bounded live integration check on 29 October 2026 verified the owner's provider access, real search records, concurrent research/review, and rendering of the saved server result. It found one business with an existing website and excluded the missing-website pitch; this check did not produce an eligible outreach draft. See [the live-check record](docs/live-check.md).
 
 The [official GPT-6 Luna model page](https://developers.openai.com/api/docs/models/gpt-6-luna) lists the selected model and pricing. The adapter uses the Responses API, `store: false`, standard service tier, reasoning `none`, at most 800 output tokens, no built-in paid tools, bounded inputs, timeouts and no automatic retries. It does not use Mozaik's unrestricted default model transport.
 
@@ -147,6 +147,8 @@ node scripts/browser-qa.mjs
 The script uses an installed Chrome browser through the DevTools Protocol; no browser is downloaded. Set `QUIL_QA_BROWSER` for another Chromium executable. It checks WebGL and automatic morphing, the removal of the old controls/cards, desktop/mobile overflow, crew introductions, typed prompts, mission pause/resume, example results, inline evidence/drafts, saving, opportunity filtering, saved state after a new conversation, composer visibility and mobile navigation. Runtime errors and compact JPEG screenshots go into ignored `.sites-runtime/qa/`.
 
 Connected-flow checks also compare the displayed answer with the server snapshot, verify that refresh preserves the run without a second POST, retain saved draft edits, cancel real server work, and confirm an outage shows an error instead of sample results. Both the API and the preview server must be running.
+
+The full browser suite refuses to run against a live-mode backend to prevent accidental provider spending. Use fixture mode for that suite. Completed live results can be reopened by their existing run token without creating another paid run.
 
 ## Credits
 
