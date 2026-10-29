@@ -249,6 +249,28 @@ export class MissionEngine {
         ]),
       ).values(),
     ];
+    const count = (
+      result.candidates ??
+      result.findings ??
+      result.decisions ??
+      result.drafts ??
+      []
+    ).length;
+    const note =
+      agent === "pip"
+        ? `Found ${count} businesses to investigate.`
+        : agent === "milo"
+          ? `Compared the records for ${count} businesses.`
+          : agent === "iris"
+            ? `${result.decisions?.filter((d) => d.verdict === "opportunity").length ?? 0} supported; ${result.decisions?.filter((d) => d.verdict === "uncertain").length ?? 0} inconclusive; ${result.decisions?.filter((d) => d.verdict === "ruled_out").length ?? 0} set aside.`
+            : agent === "wren"
+              ? revision === 0
+                ? "Provisional writing. Waiting for review."
+                : count
+                  ? `${count} reviewed introduction${count === 1 ? "" : "s"} ready.`
+                  : "No supported pitch to draft."
+              : "The reviewed answer is ready.";
+    this.emit("agent.update", agent, { text: note, revision });
     this.emit("agent.completed", agent, {
       loopId: loop.id,
       revision,

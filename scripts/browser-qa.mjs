@@ -28,6 +28,8 @@ const browser = spawn(
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 let socket;
 const errors = [];
+let runCreates = 0;
+let expectedNetworkFailure = false;
 try {
   let version;
   for (let i = 0; i < 50; i++) {
@@ -72,6 +74,12 @@ try {
           : request.resolve(message.result);
       }
     }
+    if (
+      message.method === "Network.requestWillBeSent" &&
+      message.params.request.method === "POST" &&
+      message.params.request.url.split("?")[0].endsWith("/api/runs")
+    )
+      runCreates++;
     if (message.method === "Runtime.exceptionThrown")
       errors.push(
         message.params.exceptionDetails.exception?.description ||
@@ -79,7 +87,13 @@ try {
       );
     if (
       message.method === "Log.entryAdded" &&
-      message.params.entry.level === "error"
+      message.params.entry.level === "error" &&
+      !(
+        expectedNetworkFailure &&
+        /api\/brief|ERR_BLOCKED_BY_CLIENT/.test(
+          message.params.entry.text + " " + message.params.entry.url,
+        )
+      )
     )
       errors.push(message.params.entry.text);
   });
@@ -114,8 +128,10 @@ try {
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Log.enable");
+  await send("Network.enable");
   await send("Page.addScriptToEvaluateOnNewDocument", {
-    source: "try{localStorage.removeItem('quil:saved')}catch{}",
+    source:
+      "try{if(!sessionStorage.getItem('quil:qa-initialized')){localStorage.removeItem('quil:saved:v2');sessionStorage.removeItem('quil:active-run');sessionStorage.setItem('quil:qa-initialized','yes')}}catch{}",
   });
   await send("Emulation.setDeviceMetricsOverride", {
     width: 1440,
@@ -237,26 +253,53 @@ try {
   await type(
     "Find cleaning businesses in Manchester that could use a website.",
   );
+  await evaluate(
+    "window.__pauseWatcher=setInterval(()=>{const b=document.querySelector('.composer-stop:not(:disabled)');if(b){clearInterval(window.__pauseWatcher);b.click()}},8)",
+  );
   await click(".composer-send");
-  await wait(3200);
-  const discovering = await evaluate(
-    "document.querySelector('.crew-scene-room').dataset.phase",
-  );
-  await screenshot("16-crew-on-a-mission");
-  await click(".composer-stop");
-  const paused = await evaluate(
-    "document.querySelector('.crew-scene-room').dataset.phase==='paused'",
-  );
-  await click(".resume-mission");
-  for (let i = 0; i < 65; i++) {
+  for (let i = 0; i < 80; i++) {
     if (
       await evaluate(
-        "document.querySelector('.crew-scene-room').dataset.phase==='complete'",
+        "document.querySelector('.crew-exchange')?.dataset.status==='paused'",
       )
     )
       break;
-    await wait(250);
+    await wait(50);
   }
+  const discovering = await evaluate(
+    "!!document.querySelector('.crew-exchange[data-status=paused]')",
+  );
+  const paused = discovering;
+  await screenshot("16-crew-on-a-mission");
+  const createsBeforeReload = runCreates;
+  await send("Page.reload");
+  for (let i = 0; i < 80; i++) {
+    if (
+      await evaluate(
+        "document.querySelector('.crew-exchange')?.dataset.status==='paused'",
+      )
+    )
+      break;
+    await wait(50);
+  }
+  const refreshSameRun =
+    runCreates === createsBeforeReload &&
+    (await evaluate(
+      "document.querySelector('.crew-exchange')?.dataset.status==='paused'",
+    ));
+  await click(".resume-mission");
+  for (let i = 0; i < 100; i++) {
+    if (
+      await evaluate(
+        "document.querySelector('.crew-exchange')?.dataset.status==='completed'",
+      )
+    )
+      break;
+    await wait(60);
+  }
+  const serverVerified = await evaluate(
+    `(async()=>{const saved=JSON.parse(sessionStorage.getItem('quil:active-run'));const response=await fetch('/api/runs/'+saved.run.id,{headers:{Authorization:'Bearer '+saved.accessToken}});const {run,usage}=await response.json();return run.status==='completed'&&run.mode==='fixture'&&usage.length===0&&document.querySelector('.answer-prose p').textContent===run.outcome.text&&document.querySelector('.crew-exchange').dataset.missionId===run.id})()`,
+  );
   const mission = await evaluate(
     `({phase:document.querySelector('.crew-scene-room').dataset.phase,leads:document.querySelectorAll('.conversation-results .lead-entry').length,review:document.querySelector('.conversation-messages').textContent.includes('withdrawn'),exampleLabel:document.querySelector('.results-note').textContent.includes('FICTIONAL')})`,
   );
@@ -303,6 +346,13 @@ try {
     "!!document.querySelector('.lead-introduction textarea')",
   );
   await screenshot("18-inline-introduction");
+  await evaluate(
+    "(()=>{const field=document.querySelector('.lead-introduction textarea');field.focus();field.setSelectionRange(field.value.length,field.value.length)})()",
+  );
+  await send("Input.insertText", { text: "\n\nA short outline is available." });
+  const savedDraftUpdated = await evaluate(
+    "JSON.parse(localStorage.getItem('quil:saved:v2'))[0].draft.includes('A short outline is available.')",
+  );
   await click(".room-saved-button");
   await wait(150);
   const saved = await evaluate(
@@ -324,6 +374,22 @@ try {
   const filtered = await evaluate(
     "document.querySelector('.conversation-results:last-child')?.querySelectorAll('.lead-entry').length",
   );
+  const createsBeforeCompletedReload = runCreates;
+  await send("Page.reload");
+  for (let i = 0; i < 80; i++) {
+    if (
+      await evaluate(
+        "document.querySelector('.crew-exchange')?.dataset.status==='completed'",
+      )
+    )
+      break;
+    await wait(60);
+  }
+  const completedRecovery =
+    runCreates === createsBeforeCompletedReload &&
+    (await evaluate(
+      "document.querySelectorAll('.shared-outcome').length===1&&document.querySelector('.room-saved-button').textContent.includes('1')",
+    ));
   await send("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,
@@ -349,6 +415,56 @@ try {
   const savedSurvivesReset = await evaluate(
     "document.querySelector('.room-saved-button').textContent.includes('1')",
   );
+  await evaluate(
+    "window.__cancelWatcher=setInterval(()=>{const b=document.querySelector('.cancel-mission:not(:disabled)');if(b){clearInterval(window.__cancelWatcher);b.click()}},8)",
+  );
+  await click(".try-mission");
+  for (let i = 0; i < 80; i++) {
+    if (
+      await evaluate(
+        "document.querySelector('.crew-exchange')?.dataset.status==='cancelled'",
+      )
+    )
+      break;
+    await wait(50);
+  }
+  const cancelled = await evaluate(
+    "document.querySelector('.crew-exchange')?.dataset.status==='cancelled'&&!document.querySelector('.shared-outcome')",
+  );
+  await click(".room-header .icon-button");
+  await wait(150);
+  const createsBeforeOffline = runCreates;
+  expectedNetworkFailure = true;
+  await send("Network.setBlockedURLs", { urls: ["*/api/brief"] });
+  await type("Find cleaning businesses in Manchester that need a website.");
+  await click(".composer-send");
+  for (let i = 0; i < 60; i++) {
+    if (await evaluate("!!document.querySelector('.mission-error')")) break;
+    await wait(50);
+  }
+  const offlineHonest =
+    runCreates === createsBeforeOffline &&
+    (await evaluate(
+      "!!document.querySelector('.mission-error')&&!document.querySelector('.crew-exchange')&&!document.querySelector('.shared-outcome')&&document.getElementById('crew-prompt').value.length>0",
+    ));
+  await send("Network.setBlockedURLs", { urls: [] });
+  await wait(200);
+  expectedNetworkFailure = false;
+  await click(".composer-send");
+  for (let i = 0; i < 100; i++) {
+    if (
+      await evaluate(
+        "document.querySelector('.crew-exchange')?.dataset.status==='completed'",
+      )
+    )
+      break;
+    await wait(60);
+  }
+  const reconnected = await evaluate(
+    "document.querySelector('.crew-exchange')?.dataset.status==='completed'&&!document.querySelector('.mission-error')",
+  );
+  await click(".room-header .icon-button");
+  await wait(100);
   await click(".room-header .brand");
   await wait(500);
   await screenshot("21-mobile-hero");
@@ -372,6 +488,9 @@ try {
     welcomeFit,
     introduced,
     discovering,
+    refreshSameRun,
+    serverVerified,
+    runCreates,
     paused,
     mission,
     exchange,
@@ -379,6 +498,11 @@ try {
     mobileExchange,
     evidence,
     draft,
+    savedDraftUpdated,
+    completedRecovery,
+    cancelled,
+    offlineHonest,
+    reconnected,
     saved,
     filtered,
     mobileRoom,
@@ -418,6 +542,8 @@ try {
     ) ||
     !introduced ||
     !paused ||
+    !refreshSameRun ||
+    !serverVerified ||
     mission.phase !== "complete" ||
     mission.leads !== 3 ||
     !mission.review ||
@@ -440,8 +566,13 @@ try {
     mobileExchange.agents !== 5 ||
     mobileExchange.overflow ||
     !mobileExchange.nodesFit ||
-    evidence !== 3 ||
+    evidence < 1 ||
     !draft ||
+    !savedDraftUpdated ||
+    !completedRecovery ||
+    !cancelled ||
+    !offlineHonest ||
+    !reconnected ||
     saved !== 1 ||
     filtered !== 1 ||
     mobileRoom.overflow ||

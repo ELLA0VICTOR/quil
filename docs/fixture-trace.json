@@ -1,14 +1,14 @@
 {
   "description": "Actual Mozaik execution using fictional records and deterministic fixture providers. No paid inference or search.",
   "framework": "@mozaik-ai/core@4.2.0-beta.18",
-  "overlapMs": 77,
+  "overlapMs": 70,
   "modelCostUsd": 0,
   "searchRequests": 0,
   "events": [
     {
-      "id": 1,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.143Z",
+      "id": 244,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.417Z",
       "type": "run.started",
       "agent": "quil",
       "data": {
@@ -17,9 +17,9 @@
       }
     },
     {
-      "id": 2,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.150Z",
+      "id": 245,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.419Z",
       "type": "coordination.message",
       "agent": "quil",
       "data": {
@@ -27,20 +27,20 @@
       }
     },
     {
-      "id": 3,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.156Z",
+      "id": 246,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.421Z",
       "type": "agent.started",
       "agent": "pip",
       "data": {
-        "loopId": "b452aca0-28c7-4d40-ac66-c30a8b301593",
+        "loopId": "63ad7fed-5e31-4712-85f0-dcad6b36abd0",
         "revision": 0
       }
     },
     {
-      "id": 4,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.162Z",
+      "id": 247,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.422Z",
       "type": "operation.started",
       "agent": "pip",
       "data": {
@@ -48,9 +48,9 @@
       }
     },
     {
-      "id": 5,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.244Z",
+      "id": 248,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.492Z",
       "type": "operation.completed",
       "agent": "pip",
       "data": {
@@ -58,38 +58,49 @@
       }
     },
     {
-      "id": 6,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.250Z",
+      "id": 249,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.498Z",
+      "type": "agent.update",
+      "agent": "pip",
+      "data": {
+        "text": "Found 3 businesses to investigate.",
+        "revision": 0
+      }
+    },
+    {
+      "id": 250,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.503Z",
       "type": "agent.completed",
       "agent": "pip",
       "data": {
-        "loopId": "b452aca0-28c7-4d40-ac66-c30a8b301593",
+        "loopId": "63ad7fed-5e31-4712-85f0-dcad6b36abd0",
         "revision": 0,
-        "elapsedMs": 90,
+        "elapsedMs": 81,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T18:44:41.161Z"
+            "at": "2026-10-29T19:54:52.422Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T18:44:41.249Z"
+            "at": "2026-10-29T19:54:52.498Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T18:44:41.250Z"
+            "at": "2026-10-29T19:54:52.498Z"
           }
         ]
       }
     },
     {
-      "id": 7,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.255Z",
+      "id": 251,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.510Z",
       "type": "coordination.message",
       "agent": "pip",
       "data": {
@@ -97,31 +108,31 @@
       }
     },
     {
-      "id": 8,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.261Z",
+      "id": 252,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.517Z",
       "type": "agent.started",
       "agent": "milo",
       "data": {
-        "loopId": "503f7388-5bf3-46e8-9d7d-a9e14b1250ac",
+        "loopId": "9b7a4525-8e2a-4a86-a3bf-cb79bf10bfd7",
         "revision": 0
       }
     },
     {
-      "id": 9,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.266Z",
+      "id": 253,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.523Z",
       "type": "agent.started",
       "agent": "iris",
       "data": {
-        "loopId": "cb027219-6e88-413f-8c93-91676c58758e",
+        "loopId": "bd68c87b-9b2f-41ab-ae6b-d7ed86265df6",
         "revision": 0
       }
     },
     {
-      "id": 10,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.271Z",
+      "id": 254,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.528Z",
       "type": "operation.started",
       "agent": "milo",
       "data": {
@@ -129,9 +140,9 @@
       }
     },
     {
-      "id": 11,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.276Z",
+      "id": 255,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.533Z",
       "type": "operation.started",
       "agent": "iris",
       "data": {
@@ -139,9 +150,9 @@
       }
     },
     {
-      "id": 12,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.353Z",
+      "id": 256,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.603Z",
       "type": "operation.completed",
       "agent": "milo",
       "data": {
@@ -149,38 +160,49 @@
       }
     },
     {
-      "id": 13,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.358Z",
+      "id": 257,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.608Z",
+      "type": "agent.update",
+      "agent": "milo",
+      "data": {
+        "text": "Compared the records for 3 businesses.",
+        "revision": 0
+      }
+    },
+    {
+      "id": 258,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.613Z",
       "type": "agent.completed",
       "agent": "milo",
       "data": {
-        "loopId": "503f7388-5bf3-46e8-9d7d-a9e14b1250ac",
+        "loopId": "9b7a4525-8e2a-4a86-a3bf-cb79bf10bfd7",
         "revision": 0,
-        "elapsedMs": 92,
+        "elapsedMs": 90,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T18:44:41.271Z"
+            "at": "2026-10-29T19:54:52.528Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T18:44:41.358Z"
+            "at": "2026-10-29T19:54:52.608Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T18:44:41.358Z"
+            "at": "2026-10-29T19:54:52.608Z"
           }
         ]
       }
     },
     {
-      "id": 14,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.362Z",
+      "id": 259,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.618Z",
       "type": "coordination.message",
       "agent": "milo",
       "data": {
@@ -188,20 +210,20 @@
       }
     },
     {
-      "id": 15,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.367Z",
+      "id": 260,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.622Z",
       "type": "agent.started",
       "agent": "wren",
       "data": {
-        "loopId": "1d8e7528-1656-4085-be38-c00ad85e9f41",
+        "loopId": "bbae6d39-5aa6-409d-afc5-91d8734a94ae",
         "revision": 0
       }
     },
     {
-      "id": 16,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.371Z",
+      "id": 261,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.627Z",
       "type": "operation.started",
       "agent": "wren",
       "data": {
@@ -209,9 +231,9 @@
       }
     },
     {
-      "id": 17,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.446Z",
+      "id": 262,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.698Z",
       "type": "operation.completed",
       "agent": "wren",
       "data": {
@@ -219,38 +241,49 @@
       }
     },
     {
-      "id": 18,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.451Z",
+      "id": 263,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.703Z",
+      "type": "agent.update",
+      "agent": "wren",
+      "data": {
+        "text": "Provisional writing. Waiting for review.",
+        "revision": 0
+      }
+    },
+    {
+      "id": 264,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.707Z",
       "type": "agent.completed",
       "agent": "wren",
       "data": {
-        "loopId": "1d8e7528-1656-4085-be38-c00ad85e9f41",
+        "loopId": "bbae6d39-5aa6-409d-afc5-91d8734a94ae",
         "revision": 0,
-        "elapsedMs": 80,
+        "elapsedMs": 81,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T18:44:41.371Z"
+            "at": "2026-10-29T19:54:52.626Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T18:44:41.451Z"
+            "at": "2026-10-29T19:54:52.702Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T18:44:41.451Z"
+            "at": "2026-10-29T19:54:52.702Z"
           }
         ]
       }
     },
     {
-      "id": 19,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.455Z",
+      "id": 265,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.711Z",
       "type": "draft.provisional",
       "agent": "wren",
       "data": {
@@ -262,9 +295,9 @@
       }
     },
     {
-      "id": 20,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.525Z",
+      "id": 266,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.790Z",
       "type": "operation.completed",
       "agent": "iris",
       "data": {
@@ -272,38 +305,49 @@
       }
     },
     {
-      "id": 21,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.530Z",
+      "id": 267,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.795Z",
+      "type": "agent.update",
+      "agent": "iris",
+      "data": {
+        "text": "1 supported; 1 inconclusive; 1 set aside.",
+        "revision": 0
+      }
+    },
+    {
+      "id": 268,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.798Z",
       "type": "agent.completed",
       "agent": "iris",
       "data": {
-        "loopId": "cb027219-6e88-413f-8c93-91676c58758e",
+        "loopId": "bd68c87b-9b2f-41ab-ae6b-d7ed86265df6",
         "revision": 0,
-        "elapsedMs": 259,
+        "elapsedMs": 270,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T18:44:41.271Z"
+            "at": "2026-10-29T19:54:52.528Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T18:44:41.529Z"
+            "at": "2026-10-29T19:54:52.795Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T18:44:41.530Z"
+            "at": "2026-10-29T19:54:52.795Z"
           }
         ]
       }
     },
     {
-      "id": 22,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.534Z",
+      "id": 269,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.801Z",
       "type": "review.completed",
       "agent": "iris",
       "data": {
@@ -339,9 +383,9 @@
       }
     },
     {
-      "id": 23,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.538Z",
+      "id": 270,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.805Z",
       "type": "draft.invalidated",
       "agent": "iris",
       "data": {
@@ -352,9 +396,9 @@
       }
     },
     {
-      "id": 24,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.542Z",
+      "id": 271,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.810Z",
       "type": "coordination.message",
       "agent": "iris",
       "data": {
@@ -363,20 +407,20 @@
       }
     },
     {
-      "id": 25,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.548Z",
+      "id": 272,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.817Z",
       "type": "agent.started",
       "agent": "wren",
       "data": {
-        "loopId": "1fb15fd2-419b-43d4-818a-c240b38b4c7d",
+        "loopId": "449912ff-1a93-4952-8f55-35d3a2b0ee47",
         "revision": 1
       }
     },
     {
-      "id": 26,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.552Z",
+      "id": 273,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.821Z",
       "type": "operation.started",
       "agent": "wren",
       "data": {
@@ -384,9 +428,9 @@
       }
     },
     {
-      "id": 27,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.635Z",
+      "id": 274,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.898Z",
       "type": "operation.completed",
       "agent": "wren",
       "data": {
@@ -394,38 +438,49 @@
       }
     },
     {
-      "id": 28,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.642Z",
+      "id": 275,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.902Z",
+      "type": "agent.update",
+      "agent": "wren",
+      "data": {
+        "text": "1 reviewed introduction ready.",
+        "revision": 1
+      }
+    },
+    {
+      "id": 276,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.907Z",
       "type": "agent.completed",
       "agent": "wren",
       "data": {
-        "loopId": "1fb15fd2-419b-43d4-818a-c240b38b4c7d",
+        "loopId": "449912ff-1a93-4952-8f55-35d3a2b0ee47",
         "revision": 1,
-        "elapsedMs": 90,
+        "elapsedMs": 86,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T18:44:41.552Z"
+            "at": "2026-10-29T19:54:52.821Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T18:44:41.642Z"
+            "at": "2026-10-29T19:54:52.902Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T18:44:41.642Z"
+            "at": "2026-10-29T19:54:52.902Z"
           }
         ]
       }
     },
     {
-      "id": 29,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.645Z",
+      "id": 277,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.911Z",
       "type": "draft.approved",
       "agent": "wren",
       "data": {
@@ -436,9 +491,9 @@
       }
     },
     {
-      "id": 30,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.649Z",
+      "id": 278,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.916Z",
       "type": "coordination.message",
       "agent": "wren",
       "data": {
@@ -447,20 +502,20 @@
       }
     },
     {
-      "id": 31,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.653Z",
+      "id": 279,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.920Z",
       "type": "agent.started",
       "agent": "quil",
       "data": {
-        "loopId": "f043d02a-6c09-44a4-a441-f9b66950dfcb",
+        "loopId": "927cfcd9-ce23-4a9a-ac23-76e5674101d0",
         "revision": 1
       }
     },
     {
-      "id": 32,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.659Z",
+      "id": 280,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:52.923Z",
       "type": "operation.started",
       "agent": "quil",
       "data": {
@@ -468,9 +523,9 @@
       }
     },
     {
-      "id": 33,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.743Z",
+      "id": 281,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:53.007Z",
       "type": "operation.completed",
       "agent": "quil",
       "data": {
@@ -478,38 +533,49 @@
       }
     },
     {
-      "id": 34,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.747Z",
+      "id": 282,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:53.021Z",
+      "type": "agent.update",
+      "agent": "quil",
+      "data": {
+        "text": "The reviewed answer is ready.",
+        "revision": 1
+      }
+    },
+    {
+      "id": 283,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:53.030Z",
       "type": "agent.completed",
       "agent": "quil",
       "data": {
-        "loopId": "f043d02a-6c09-44a4-a441-f9b66950dfcb",
+        "loopId": "927cfcd9-ce23-4a9a-ac23-76e5674101d0",
         "revision": 1,
-        "elapsedMs": 89,
+        "elapsedMs": 107,
         "transitions": [
           {
             "from": "awaiting_inference_request",
             "to": "awaiting_inference",
-            "at": "2026-10-29T18:44:41.659Z"
+            "at": "2026-10-29T19:54:52.923Z"
           },
           {
             "from": "awaiting_inference",
             "to": "idle",
-            "at": "2026-10-29T18:44:41.747Z"
+            "at": "2026-10-29T19:54:53.021Z"
           },
           {
             "from": "idle",
             "to": "completed",
-            "at": "2026-10-29T18:44:41.747Z"
+            "at": "2026-10-29T19:54:53.021Z"
           }
         ]
       }
     },
     {
-      "id": 35,
-      "runId": "161b16c4-e17e-4ce2-9b02-717672ebc5f7",
-      "at": "2026-10-29T18:44:41.757Z",
+      "id": 284,
+      "runId": "7cd648ac-3906-4d56-ba6d-132a7b784bf1",
+      "at": "2026-10-29T19:54:53.038Z",
       "type": "run.completed",
       "agent": "quil",
       "data": {
@@ -605,7 +671,7 @@
               "url": "https://example.invalid/fern",
               "title": "Fictional Fern booking profile",
               "observation": "Fern & Co. Cleaning asks customers to message for availability.",
-              "observedAt": "2026-10-29T18:44:41.244Z",
+              "observedAt": "2026-10-29T19:54:52.492Z",
               "fictional": true
             },
             {
@@ -613,7 +679,7 @@
               "url": "https://example.invalid/clearwell",
               "title": "Fictional Clearwell website check",
               "observation": "One website check timed out. This is inconclusive.",
-              "observedAt": "2026-10-29T18:44:41.244Z",
+              "observedAt": "2026-10-29T19:54:52.492Z",
               "fictional": true
             },
             {
@@ -621,7 +687,7 @@
               "url": "https://example.invalid/sunday",
               "title": "Fictional Sunday follow-up",
               "observation": "The follow-up confirms an existing website; withdraw the no-website pitch.",
-              "observedAt": "2026-10-29T18:44:41.244Z",
+              "observedAt": "2026-10-29T19:54:52.492Z",
               "fictional": true
             }
           ]

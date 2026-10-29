@@ -4,6 +4,7 @@ import AgentSprite from "./AgentSprite";
 import { Icon } from "./Icon";
 import { crew } from "../data/crew";
 import type { AgentId, MissionPhase } from "../data/crew";
+import type { Activity, MissionView } from "../lib/run-view";
 
 const tasks: Record<AgentId, string> = {
   quil: "A few different perspectives. One clear answer.",
@@ -11,13 +12,6 @@ const tasks: Record<AgentId, string> = {
   milo: "Look at websites and bookings.",
   iris: "Check the evidence.",
   wren: "Shape the first hello.",
-};
-const working: Partial<Record<MissionPhase, AgentId[]>> = {
-  planning: ["quil"],
-  discovering: ["pip"],
-  investigating: ["milo", "iris"],
-  reviewing: ["iris"],
-  writing: ["wren"],
 };
 const order: AgentId[] = ["quil", "pip", "milo", "iris", "wren"];
 
@@ -28,13 +22,23 @@ export default function CrewExchange({
   notes,
   complete,
   children,
+  activity,
+  mode,
+  location,
+  status,
+  connection,
 }: {
-  id: number;
+  id: number | string;
   request: string;
   phase: MissionPhase;
   notes: Partial<Record<AgentId, string>>;
   complete: boolean;
   children: ReactNode;
+  activity: Partial<Record<AgentId, Activity>>;
+  mode: MissionView["mode"];
+  location: string;
+  status: MissionView["status"];
+  connection: MissionView["connection"];
 }) {
   const map = useRef<HTMLDivElement>(null);
   const [connections, setConnections] = useState<{
@@ -94,13 +98,21 @@ export default function CrewExchange({
     <section
       className={`crew-exchange${complete ? " exchange-complete" : ""}`}
       data-mission-id={id}
+      data-phase={phase}
+      data-status={status}
       aria-label="The crew's shared answer"
     >
       <div className="exchange-brief">
         <span>You asked</span>
         <p>{request}</p>
       </div>
-      <p className="exchange-example">Fictional example · Manchester</p>
+      <p className="exchange-example">
+        {mode === "fixture"
+          ? `Fictional example · ${location}`
+          : mode === "live"
+            ? `Source-backed search · ${location}`
+            : "Connecting to Quil"}
+      </p>
       <div className="collaboration-map" ref={map}>
         {connections && (
           <svg
@@ -110,7 +122,10 @@ export default function CrewExchange({
           >
             {connections.paths.map(({ agent, d, x, y }) => {
               const person = crew.find((p) => p.id === agent)!;
-              const active = working[phase]?.includes(agent) && !complete;
+              const active =
+                status === "running" &&
+                connection === "connected" &&
+                activity[agent] === "working";
               return (
                 <g
                   key={agent}
@@ -128,8 +143,10 @@ export default function CrewExchange({
         {order.map((agent) => {
           const person = crew.find((p) => p.id === agent)!;
           const active =
-            !complete && (working[phase]?.includes(agent) ?? false);
-          const ready = complete || (!!notes[agent] && !active);
+            status === "running" &&
+            connection === "connected" &&
+            activity[agent] === "working";
+          const ready = activity[agent] === "ready";
           const text =
             agent === "quil" && complete
               ? "Findings checked. Over to you."
@@ -139,7 +156,15 @@ export default function CrewExchange({
               key={agent}
               className={`agent-contribution contribution-${agent}`}
               data-agent={agent}
-              data-state={active ? "working" : ready ? "ready" : "waiting"}
+              data-state={
+                activity[agent] === "error"
+                  ? "error"
+                  : active
+                    ? "working"
+                    : ready
+                      ? "ready"
+                      : "waiting"
+              }
               style={{ "--voice": person.color } as CSSProperties}
             >
               <AgentSprite
@@ -174,10 +199,16 @@ export default function CrewExchange({
         </section>
       ) : (
         <p className="exchange-progress" role="status">
-          {phase === "paused"
-            ? "Paused. We’ll pick up here."
-            : "Bringing the findings together"}
-          {phase !== "paused" && (
+          {status === "failed"
+            ? "The search couldn’t finish."
+            : status === "cancelled"
+              ? "Search cancelled."
+              : connection === "reconnecting"
+                ? "Connection interrupted. Reconnecting to the same search…"
+                : status === "paused"
+                  ? "Paused. We’ll pick up here."
+                  : "Bringing the findings together"}
+          {status === "running" && connection === "connected" && (
             <span className="progress-dots" aria-hidden="true">
               <i />
               <i />

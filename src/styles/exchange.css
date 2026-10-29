@@ -234,6 +234,55 @@
 .shared-outcome .conversation-results :is(button, summary):hover {
   color: var(--answer-color);
 }
+.shared-outcome .conversation-results a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.mission-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  margin: 0 auto 12px;
+}
+.mission-controls .resume-mission {
+  margin: 0;
+  padding: 4px 0;
+}
+.cancel-mission {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: #a0adc0;
+  padding: 4px 0;
+}
+.cancel-mission:hover {
+  color: #e5edf8;
+}
+.mission-error {
+  max-width: 700px;
+  margin: 8px auto 22px;
+  padding-left: 14px;
+  border-left: 1px solid #c59685;
+  color: #dcc3b9;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.mission-error .text-link {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.agent-contribution[data-state="error"] .contribution-name:after {
+  content: "!";
+  font-size: 11px;
+}
+.empty-opportunities {
+  font-size: 12px;
+  line-height: 1.8;
+  margin-top: 15px;
+}
 .shared-outcome .lead-signal {
   background: var(--answer-color);
   box-shadow: none;

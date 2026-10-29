@@ -5,6 +5,7 @@ import type { Config } from "./config.ts";
 import { assertLiveConfigured } from "./config.ts";
 import { Store } from "./store.ts";
 import { MissionEngine } from "./engine.ts";
+import { prepareBrief } from "./brief.ts";
 import { FixtureProvider, LiveProvider } from "./providers.ts";
 import type { TaskProvider } from "./providers.ts";
 import type { Brief, RunSnapshot, RunEvent } from "../shared/mission.ts";
@@ -153,14 +154,30 @@ export function createApi(
       });
       return;
     }
+    if (req.method === "POST" && url.pathname === "/api/brief") {
+      const value = await body(req);
+      try {
+        json(res, 200, prepareBrief(value, config.mode));
+      } catch (error) {
+        throw new HttpError(400, (error as Error).message);
+      }
+      return;
+    }
     if (req.method === "POST" && url.pathname === "/api/runs") {
-      const input = brief(await body(req), config.mode);
+      const payload = await body(req);
+      if (payload.mode !== undefined && payload.mode !== "fixture")
+        throw new HttpError(
+          400,
+          "Only explicit fixture mode can be requested by a client",
+        );
+      const runMode = payload.mode === "fixture" ? "fixture" : config.mode;
+      const input = brief(payload, runMode);
       if (active.size >= 1)
         throw new HttpError(
           429,
           "One mission is already active. Finish or cancel it first.",
         );
-      if (config.mode === "live") {
+      if (runMode === "live") {
         try {
           assertLiveConfigured(config);
         } catch (error) {
@@ -172,7 +189,7 @@ export function createApi(
         now = new Date().toISOString();
       const run: RunSnapshot = {
         id,
-        mode: config.mode,
+        mode: runMode,
         status: "queued",
         brief: input,
         createdAt: now,
@@ -180,7 +197,7 @@ export function createApi(
       };
       const provider =
         options.providerFactory?.(id) ??
-        (config.mode === "fixture"
+        (runMode === "fixture"
           ? new FixtureProvider()
           : new LiveProvider(config, store, id));
       const engine = new MissionEngine(run, store, provider, publish);

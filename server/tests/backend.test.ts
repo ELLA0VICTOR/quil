@@ -36,9 +36,9 @@ const liveEnv = {
   SERPER_API_KEY: "test-placeholder",
 };
 const headers = { "Content-Type": "application/json" };
-async function start() {
+async function start(env: NodeJS.ProcessEnv = {}) {
   const directory = temporary();
-  const api = createApi(readConfig({ QUIL_DATA_DIR: directory }));
+  const api = createApi(readConfig({ ...env, QUIL_DATA_DIR: directory }));
   await new Promise<void>((resolve) =>
     api.server.listen(0, "127.0.0.1", resolve),
   );
@@ -450,6 +450,43 @@ test("restarting marks unfinished runs failed without releasing reservations or 
   } finally {
     store.close();
     remove(directory);
+  }
+});
+
+test("the example stays free on a live-configured server, and brief clarification never starts work", async () => {
+  const api = await start({ QUIL_MODE: "live", QUIL_ENABLE_LIVE: "false" });
+  try {
+    const clarify = await fetch(api.base + "/api/brief", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ request: "I build websites" }),
+    });
+    assert.equal(clarify.status, 200);
+    assert.deepEqual((await clarify.json()).missing, ["category", "location"]);
+    assert.equal(api.active.size, 0);
+    const response = await fetch(api.base + "/api/runs", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ request: "Try the example", mode: "fixture" }),
+    });
+    assert.equal(response.status, 201);
+    const created = (await response.json()) as CreatedRun;
+    const result = await complete(api.base, created);
+    assert.equal(result.mode, "fixture");
+    assert.deepEqual(api.store.usage(created.run.id), []);
+    const blocked = await fetch(api.base + "/api/runs", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        request: "Find cleaners in Manchester",
+        category: "cleaners",
+        location: "Manchester",
+        service: "website design",
+      }),
+    });
+    assert.equal(blocked.status, 503);
+  } finally {
+    await api.cleanup();
   }
 });
 

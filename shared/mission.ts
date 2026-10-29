@@ -9,6 +9,13 @@ export type Brief = {
   service: string;
   limit: number;
 };
+export type BriefField = "category" | "location" | "service";
+export type PreparedBrief = {
+  context: Partial<Brief>;
+  missing: BriefField[];
+  question?: string;
+  brief?: Brief;
+};
 export type Source = {
   id: string;
   url: string;
