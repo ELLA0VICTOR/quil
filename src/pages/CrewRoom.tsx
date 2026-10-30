@@ -12,7 +12,7 @@ import type { AgentId } from "../data/crew";
 import { phaseFor, prospectsFor } from "../lib/run-view";
 import type { MissionView, Prospect } from "../lib/run-view";
 import { useCrewRuns } from "../hooks/useCrewRuns";
-import { prepareRun } from "../lib/api";
+import { converse, prepareRun } from "../lib/api";
 import type { PreparedBrief } from "../../shared/mission";
 import { followUp } from "../lib/follow-up";
 import GoogleSettings from "../components/GoogleSettings";
@@ -26,26 +26,47 @@ function pendingBrief(userId: string): PreparedBrief | null {
     const value = JSON.parse(
       sessionStorage.getItem(`quil:${userId}:pending-brief`) || "null",
     );
-    return typeof value?.brief?.request === "string" && value.brief.request.length <= 2000
+    return (typeof value?.brief?.request === "string" || typeof value?.context?.request === "string")
       ? value
       : null;
   } catch {
     return null;
   }
 }
+function cachedText(userId: string, suffix: string) {
+  try { return sessionStorage.getItem(`quil:${userId}:${suffix}`) ?? ""; } catch { return ""; }
+}
 export default function CrewRoom({ goHome }: { goHome: () => void }) {
   const account = useAccount();
   const userId = account.session!.user.id;
   const session = useCrewRuns(`quil:${userId}:active-run`);
   const [restoredBrief] = useState(() => pendingBrief(userId));
-  const [input, setInput] = useState(restoredBrief?.brief?.request || ""),
-    [panel, setPanel] = useState<"saved" | "about" | "google" | null>(null),
+  const [input, setInput] = useState(cachedText(userId, "composer-draft") || restoredBrief?.brief?.request || ""),
+    [panel, setPanel] = useState<"saved" | "about" | "google" | null>(() => {
+      try {
+        const from = sessionStorage.getItem("quil:connect-after-signin");
+        if (account.session!.user.authenticated && (from === userId || from === account.session!.adoptedGuestId)) {
+          sessionStorage.removeItem("quil:connect-after-signin"); return "google";
+        }
+      } catch {}
+      return null;
+    }),
     [toast, setToast] = useState(""),
     [introducing, setIntroducing] = useState(false);
   const [saved, setSaved, savedError] = useSavedProspects(userId);
   const [pending, setPending] = useState<PreparedBrief | null>(restoredBrief),
     [preparing, setPreparing] = useState(false),
     [requestError, setRequestError] = useState("");
+  const [memory, setMemory] = useState(cachedText(userId, "chat-memory"));
+  const [connectionNeeded, setConnectionNeeded] = useState(false);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(`quil:${userId}:composer-draft`, input);
+      sessionStorage.setItem(`quil:${userId}:chat-memory`, memory);
+      if (pending) sessionStorage.setItem(`quil:${userId}:pending-brief`, JSON.stringify(pending));
+      else sessionStorage.removeItem(`quil:${userId}:pending-brief`);
+    } catch {}
+  }, [userId, input, memory, pending]);
   const prepareVersion = useRef(0);
   const busy = session.busy || preparing;
   const feed = useRef<HTMLDivElement>(null),
@@ -72,6 +93,11 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
   useEffect(() => {
     const element = feed.current;
     if (!element) return;
+    const align = () => {
+    if ((connectionNeeded || session.connectionRequired) && element.querySelector(".connection-gate")) {
+      element.scrollTo({ top: element.scrollHeight, behavior: "instant" });
+      return;
+    }
     const latest = session.items.at(-1);
     if (!latest) {
       element.scrollTo({ top: 0, behavior: "instant" });
@@ -102,13 +128,25 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
           ? "instant"
           : "smooth",
       });
-  }, [session.items]);
+    };
+    align();
+    const observer = new ResizeObserver(align);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [session.items, connectionNeeded, session.connectionRequired]);
   const notify = (text: string) => {
     setToast(text);
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(""), 3500);
   };
   const closePanel = useCallback(() => setPanel(null), []);
+  const connectToContinue = () => {
+    if (account.session!.user.authenticated) setPanel("google");
+    else {
+      try { sessionStorage.setItem("quil:connect-after-signin", userId); } catch {}
+      account.openAccount();
+    }
+  };
   const meet = (id: AgentId) => {
     session.say(id, crew.find((person) => person.id === id)!.introduction);
     setIntroducing(true);
@@ -120,6 +158,8 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     setPending(null);
     setPreparing(false);
     setRequestError("");
+    setConnectionNeeded(false);
+    setMemory("");
     await session.reset();
     setInput("");
     if (composer.current) composer.current.style.height = "auto";
@@ -132,11 +172,25 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
   };
   const begin = async (request: string) => {
     if (busy) return;
+    const liveChat = account.session!.mode === "live";
     const version = prepareVersion.current;
     setPreparing(true);
     setRequestError("");
     try {
-      const prepared = await prepareRun({
+      const research = session.items.findLast((item): item is MissionView => item.kind === "mission" && !!item.mode);
+      const context = pending?.context ??
+        session.lastMission?.brief ?? (research?.mode === "live" ? research.brief : undefined);
+      const prepared = liveChat ? await converse({
+        id: crypto.randomUUID(),
+        request,
+        context,
+        memory,
+        runId: research?.id,
+        history: session.items.flatMap((item) => item.kind === "mission" ? [
+          { role: "user" as const, text: item.request },
+          ...(item.outcome ? [{ role: "assistant" as const, text: item.outcome.text }] : []),
+        ] : [{ role: item.speaker === "you" ? "user" as const : "assistant" as const, text: item.text }]).slice(-8).map((message) => ({ ...message, text: message.text.slice(0, 450) })),
+      }) : await prepareRun({
         request,
         context:
           pending?.context ??
@@ -146,6 +200,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         answering: pending?.questionField ? [pending.questionField] : pending?.missing,
       });
       if (version !== prepareVersion.current) return;
+      if ("memory" in prepared && typeof prepared.memory === "string") setMemory(prepared.memory);
       if (!prepared.brief) {
         session.say("you", request);
         session.say(
@@ -154,16 +209,10 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         );
         setPending(prepared);
       } else {
-        if (!account.session!.user.authenticated && account.session!.mode === "live") {
+        if (session.hasActive) {
+          session.say("you", request);
+          session.say("quil", "Let's finish or cancel the current search before starting another. You can still ask me about what the crew is doing.");
           setPending(prepared);
-          setInput(request);
-          try {
-            sessionStorage.setItem(
-              `quil:${userId}:pending-brief`,
-              JSON.stringify(prepared),
-            );
-          } catch {}
-          account.openAccount();
           return;
         }
         setPending(null);
@@ -174,7 +223,9 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       }
     } catch (error) {
       if (version === prepareVersion.current) {
-        setRequestError((error as Error).message);
+        const needsConnection = (error as { code?: string }).code === "CONNECT_GOOGLE_REQUIRED";
+        if (needsConnection) setConnectionNeeded(true);
+        setRequestError(needsConnection ? "" : (error as Error).message);
         setInput(request);
       }
     } finally {
@@ -199,7 +250,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       void session.control("resume");
       return;
     }
-    if (/^(who (are|is)|introduce|meet (the|your)|your team)\b/i.test(request)) {
+    if (account.session!.mode !== "live" && /^(who (are|is)|introduce|meet (the|your)|your team)\b/i.test(request)) {
       session.say("you", request);
       session.say(
         "quil",
@@ -214,11 +265,11 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       session.filterOpportunities();
       return;
     }
-    if (/\b(saved|bookmarks)\b/i.test(request)) {
+    if (/^(?:show|open|view)?\s*(?:my\s+)?(?:saved|bookmarks)(?:\s+(?:businesses|prospects|items))?[.!?]*$/i.test(request)) {
       setPanel("saved");
       return;
     }
-    if (session.hasActive) {
+    if (account.session!.mode !== "live" && session.hasActive) {
       session.say("you", request);
       session.say(
         "quil",
@@ -226,7 +277,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       );
       return;
     }
-    if (!pending && session.lastMission?.outcome) {
+    if (account.session!.mode !== "live" && !pending && session.lastMission?.outcome) {
       const reply = followUp(request, session.lastMission.outcome);
       if (reply) {
         session.say("you", request);
@@ -381,11 +432,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
           </button>
           <button
             className="room-connect-button"
-            onClick={() =>
-              account.session!.user.authenticated
-                ? setPanel("google")
-                : account.openAccount()
-            }
+            onClick={connectToContinue}
             aria-label="Gmail and Calendar connection"
             title="Gmail & Calendar"
           >
@@ -547,6 +594,11 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
               <p>{requestError}</p>
             </div>
           )}
+          {preparing && <p className="chat-thinking" role="status">Quil is thinking<span className="progress-dots" aria-hidden="true"><i /><i /><i /></span></p>}
+          {(connectionNeeded || session.connectionRequired) && <div className="connection-gate" role="status">
+            <p>Connect Gmail to continue. Your conversation and research will stay here.</p>
+            <button className="button button-blue" onClick={connectToContinue}>Connect Gmail to continue <Icon name="arrow" size={15} /></button>
+          </div>}
         </div>
         <div className="room-composer-area">
           {!session.items.length && (
@@ -574,7 +626,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
                 e.target.style.height = `${Math.min(e.target.scrollHeight, 110)}px`;
               }}
             />
-            {running ? (
+            {running && !input.trim() ? (
               <button
                 type="button"
                 className="composer-send composer-stop"

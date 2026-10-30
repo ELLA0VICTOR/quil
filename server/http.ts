@@ -11,6 +11,9 @@ import type { IdentityVerifier } from "./accounts.ts";
 import { savedRecords } from "./saved.ts";
 import { MissionEngine } from "./engine.ts";
 import { prepareBrief } from "./brief.ts";
+import { chat } from "./conversation.ts";
+import { ConnectRequired } from "./preview.ts";
+import type { ConversationModel } from "./conversation.ts";
 import { GoogleConnection, ActionError } from "./google.ts";
 import { OutreachService } from "./outreach.ts";
 import { crewAction } from "./crew-action.ts";
@@ -95,6 +98,7 @@ function brief(value: Record<string, unknown>, mode: Config["mode"]): Brief {
 export async function createApi(
   config: Config,
   options: {
+    conversationModel?: ConversationModel;
     store?: Store;
     providerFactory?: (id: string) => TaskProvider;
     googleFactory?: (userId: string) => GoogleConnection;
@@ -179,6 +183,7 @@ export async function createApi(
             error instanceof HttpError || error instanceof ActionError
               ? error.message
               : "The server could not process this request",
+          ...(error instanceof ConnectRequired ? { code: error.code } : {}),
         },
       );
     });
@@ -483,6 +488,13 @@ export async function createApi(
       }
       throw new HttpError(404, "Integration endpoint not found");
     }
+    if (req.method === "POST" && url.pathname === "/api/chat") {
+      reviewed();
+      if (config.mode !== "live" && !options.conversationModel)
+        throw new HttpError(503, "AI chat needs a live model connection. You can still try the fictional research example.");
+      json(res, 200, await chat(config, store, user.id, await body(req, 16_000), options.conversationModel));
+      return;
+    }
     if (req.method === "POST" && url.pathname === "/api/brief") {
       const value = await body(req);
       try {
@@ -515,7 +527,6 @@ export async function createApi(
       if (runMode === "live") {
         try {
           assertLiveConfigured(config);
-          accounts.require(user);
         } catch (error) {
           if (error instanceof ActionError) throw error;
           throw new HttpError(503, (error as Error).message);

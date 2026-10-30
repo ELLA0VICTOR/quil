@@ -31,6 +31,7 @@ export default function ProspectDialog({
       ref={dialog}
       className="prospect-dialog"
       aria-labelledby={heading}
+      onClose={onClose}
       onCancel={(event) => { event.preventDefault(); onClose(); }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {

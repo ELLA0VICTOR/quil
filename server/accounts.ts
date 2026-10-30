@@ -3,6 +3,7 @@ import { OAuth2Client } from "google-auth-library";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Config } from "./config.ts";
 import { Store, hashToken } from "./store.ts";
+import { adoptPreview } from "./preview.ts";
 import { ActionError } from "./google.ts";
 import type { SessionView } from "../shared/session.ts";
 
@@ -280,6 +281,8 @@ export class Accounts {
       if (existing) {
         id = existing.id;
         if (!previous.authenticated && previous.id !== id) {
+          await adoptPreview(this.store, previous.id, id);
+          await this.store.db.prepare("UPDATE charge_owners SET user_id=? WHERE user_id=?").run(id, previous.id);
           await this.store.db
             .prepare("UPDATE run_owners SET user_id=? WHERE user_id=?")
             .run(id, previous.id);

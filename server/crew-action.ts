@@ -2,8 +2,8 @@ import { defineAgentModule } from "@mozaik-ai/core";
 import type { InferenceRunner } from "@mozaik-ai/core";
 import type { Store } from "./store.ts";
 
-// Downstream work uses a real agent loop, bounded by the reviewed operation.
-// These integration operations do not consume model inference credits.
+// Downstream work uses a real agent loop. The supplied work handles its own
+// inference allowance; Google operations themselves need no model request.
 export async function crewAction<T>(
   store: Store,
   runId: string,
@@ -32,7 +32,7 @@ export async function crewAction<T>(
           },
         ],
         tokenUsage: undefined,
-        rowResponse: { provider: "approved-google-action" },
+        rowResponse: { provider: task === "understand-and-answer-chat" ? "quil-conversation" : "approved-google-action" },
       };
     },
     stream() {
@@ -47,7 +47,9 @@ export async function crewAction<T>(
         ? "Review the reply against the recorded conversation and user-supplied offer boundaries."
         : role === "wren"
           ? "Prepare the requested outreach preview from approved research. Do not send it."
-          : "Carry out only the exact user-approved action. Do not retry an uncertain send.",
+          : task === "understand-and-answer-chat"
+            ? "Understand the user's conversation, answer from owned research, and clarify their brief. Do not send messages or invitations."
+            : "Carry out only the exact user-approved action. Do not retry an uncertain send.",
     tools: [],
   });
   const loop = await module.createLoop({

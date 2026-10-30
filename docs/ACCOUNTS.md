@@ -24,7 +24,7 @@ Your existing developer Gmail connection is kept private during migration. It is
 
 ## User flow
 
-Try the fictional example without an account, or sign in to start private live research. Use the envelope button to connect Gmail/Calendar for the signed-in workspace. Another user signs into their own account and authorizes their own connection. Sign-out clears private browser caches. Saved businesses are stored per account on the server as well as cached in that workspace.
+Try the fictional example or a limited real AI chat/research preview without connecting Gmail. By default, the preview allows ten chat turns and one live search. At the limit, sign in and connect Gmail to continue; the browser conversation, research and unsent input survive the redirect. Use the envelope button to connect Gmail/Calendar for the signed-in workspace. Another user signs into their own account and authorizes their own connection. Sign-out clears private browser caches. Saved businesses are stored per account on the server as well as cached in that workspace.
 
 Run tokens are scoped to both their owning user and session-authenticated account. Google connections and outreach records are isolated by user; one user's token refresh or disconnect must not touch another user's connection. Research has per-account allowances as well as the existing global spending ceiling. Approval is still required before messages or invitations are sent.
 

@@ -16,6 +16,7 @@ const tables: Record<string, string[]> = {
   outreach_owners: ["action_id", "user_id"],
   run_owners: ["run_id", "user_id"],
   charge_times: ["charge_id", "at"],
+  charge_owners: ["charge_id", "user_id"],
 };
 
 export function postgresSql(sql: string, namespace = "quil") {

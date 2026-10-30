@@ -6,6 +6,7 @@ import type {
   PreparedBrief,
 } from "../../shared/mission";
 import { workspaceHeaders } from "./session-api";
+import type { ChatRequest, ChatResponse } from "../../shared/conversation";
 
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
@@ -25,11 +26,11 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
     );
   }
   if (!response.ok)
-    throw Error(
+    throw Object.assign(Error(
       typeof value.error === "string"
         ? value.error
         : "Quil could not complete the request",
-    );
+    ), { code: typeof value.code === "string" ? value.code : undefined });
   return value as T;
 }
 export const createRun = (
@@ -49,6 +50,13 @@ export const prepareRun = (input: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+  });
+export const converse = (input: ChatRequest) =>
+  request<ChatResponse>("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Quil-Action": "review" },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(32_000),
   });
 export const getRun = (id: string, token: string) =>
   request<{ run: RunSnapshot }>(`/api/runs/${encodeURIComponent(id)}`, {

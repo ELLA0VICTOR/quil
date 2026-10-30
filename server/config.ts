@@ -102,6 +102,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
     signInRedirectUri,
     publicOrigin,
     maxActiveRuns: number(env, "QUIL_MAX_ACTIVE_RUNS", 2, 1, 4),
+    previewChatTurns: number(env, "QUIL_PREVIEW_CHAT_TURNS", 10, 1, 30),
+    previewResearchRuns: number(env, "QUIL_PREVIEW_RESEARCH_RUNS", 1, 1, 3),
     userDailyBudget: Math.floor(
       number(env, "QUIL_USER_DAILY_BUDGET_USD", 0.02, 0, 0.5) * 1e9,
     ),

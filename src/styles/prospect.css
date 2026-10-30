@@ -119,6 +119,12 @@
 .outreach-error.outreach-feedback { border-color: #e5a39b; color: #ffd3cd; }
 .compose-hint { color: #c0cada; font-size: 13px; margin: 8px 0 0 !important; }
 .reply-checked { color: #adbbce; font-size: 12px; }
+.outreach-record { flex-basis: 100%; min-width: 0; font-size: 14px; }
+.outreach-record summary { cursor: pointer; padding: 6px 0; color: #e1ebfa; }
+.recorded-terms { border-block: 1px solid #ffffff20; padding: 14px 0; margin-block: 14px; }
+.recorded-terms dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 18px; margin: 0; }
+.recorded-terms dt { color: #b9c6d8; }
+.recorded-terms dd { margin: 0; color: #f5f7fb; overflow-wrap: anywhere; }
 .action-confirmation {
   width: min(440px, calc(100vw - 32px));
   max-height: calc(100svh - 32px);

@@ -1,7 +1,7 @@
 import type { Outcome } from "../../shared/mission.ts";
 
-// Questions about a completed result use the evidence already paid for. They
-// never silently launch another discovery or call a model just to rephrase it.
+// Free fictional-example help only. Live conversation is interpreted by the
+// server's model-backed /api/chat endpoint, grounded in owned research.
 export function followUp(
   request: string,
   outcome: Outcome,

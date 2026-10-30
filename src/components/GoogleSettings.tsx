@@ -4,7 +4,7 @@ import type { GoogleStatus } from "../../shared/outreach";
 import { useAccount } from "../hooks/useAccount";
 
 export default function GoogleSettings() {
-  const { session } = useAccount();
+  const { session, openAccount } = useAccount();
   const [status, setStatus] = useState<GoogleStatus>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -25,6 +25,11 @@ export default function GoogleSettings() {
     };
   }, []);
   const connect = async () => {
+    if (!session?.user.authenticated) {
+      try { sessionStorage.setItem("quil:connect-after-signin", session!.user.id); } catch {}
+      openAccount();
+      return;
+    }
     setBusy(true);
     setError("");
     try {

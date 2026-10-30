@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import type { Config } from "./config.ts";
 import type { RunSnapshot, RunEvent } from "../shared/mission.ts";
+import { consumePreview } from "./preview.ts";
 
 export const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -34,6 +35,7 @@ export class Store {
       CREATE TABLE IF NOT EXISTS outreach_owners (action_id TEXT PRIMARY KEY, user_id TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS saved_prospects (user_id TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS charge_times (charge_id TEXT PRIMARY KEY, at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS charge_owners (charge_id TEXT PRIMARY KEY, user_id TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS run_controls (run_id TEXT PRIMARY KEY, desired TEXT NOT NULL, deadline INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS run_control_deadline ON run_controls(deadline);
     `,
@@ -79,6 +81,7 @@ export class Store {
             "A research mission is already active. Finish it before starting another.",
           );
       }
+      if (run.mode === "live" && userId && config) await consumePreview(this, config, userId, "research");
       await this.db
         .prepare("INSERT INTO runs VALUES (?,?,?)")
         .run(run.id, hashToken(token), JSON.stringify(run));
@@ -154,6 +157,7 @@ export class Store {
     amount: number,
     provider: "openai" | "search",
     config: Config,
+    explicitOwner?: string,
   ): Promise<string> {
     if (!Number.isSafeInteger(amount) || amount < 0)
       throw Error("Invalid reservation amount");
@@ -178,13 +182,16 @@ export class Store {
       const owner = (await this.db
         .prepare("SELECT user_id FROM run_owners WHERE run_id=?")
         .get(runId)) as { user_id: string } | undefined;
-      if (owner) {
+      if (owner && explicitOwner && owner.user_id !== explicitOwner)
+        throw Error("Usage owner mismatch");
+      const userId = owner?.user_id ?? explicitOwner;
+      if (userId) {
         const daily = (await this.db
           .prepare(
-            "SELECT COALESCE(SUM(c.charged),0) cost,COUNT(*) calls FROM charges c JOIN run_owners o ON o.run_id=c.run_id JOIN charge_times t ON t.charge_id=c.id WHERE o.user_id=? AND c.provider=? AND t.at>=?",
+            "SELECT COALESCE(SUM(c.charged),0) cost,COUNT(*) calls FROM charges c LEFT JOIN run_owners o ON o.run_id=c.run_id LEFT JOIN charge_owners co ON co.charge_id=c.id JOIN charge_times t ON t.charge_id=c.id WHERE COALESCE(o.user_id,co.user_id)=? AND c.provider=? AND t.at>=?",
           )
           .get(
-            owner.user_id,
+            userId,
             provider,
             new Date(Date.now() - 86400_000).toISOString(),
           )) as { cost: number; calls: number };
@@ -203,6 +210,7 @@ export class Store {
       await this.db
         .prepare("INSERT INTO charge_times VALUES(?,?)")
         .run(id, new Date().toISOString());
+      if (userId) await this.db.prepare("INSERT INTO charge_owners VALUES(?,?)").run(id, userId);
       return id;
     });
   }

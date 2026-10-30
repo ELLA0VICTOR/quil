@@ -343,6 +343,22 @@ export default function OutreachPanel({
                     </button>
                   )}
                   {action.error && <small>{action.error}</small>}
+                  <details className="outreach-record">
+                    <summary>{action.terms ? "View message & terms" : "View recorded message"}</summary>
+                    <p>To: {action.recipient}<br />Subject: {action.subject}
+                      {action.sentAt && <><br />Recorded sent: {new Date(action.sentAt).toLocaleString()}</>}
+                    </p>
+                    {action.terms && <section className="recorded-terms" aria-label="Saved offer terms">
+                      <h4>Your offer terms</h4>
+                      <dl>
+                        <dt>Your quote</dt><dd>{new Intl.NumberFormat(undefined, { style: "currency", currency: action.terms.currency }).format(action.terms.priceMinor / 100)}</dd>
+                        <dt>Private minimum</dt><dd>{new Intl.NumberFormat(undefined, { style: "currency", currency: action.terms.currency }).format(action.terms.minimumMinor / 100)}</dd>
+                        <dt>Scope</dt><dd>{action.terms.scope}</dd>
+                        <dt>Delivery</dt><dd>{action.terms.deliveryDays} working days</dd>
+                      </dl>
+                    </section>}
+                    <p className="reply-body">{action.text}</p>
+                  </details>
                 </div>
               ))}
             </div>
@@ -359,6 +375,7 @@ export default function OutreachPanel({
                     (action) => action.kind === "email" && action.state === "sent",
                   )!.id
                 }
+                initialTerms={actions.find((action) => action.terms)?.terms}
                 onReply={(plan) => {
                   drafts.current[kind] = { subject, message };
                   setReplyPlan(plan);

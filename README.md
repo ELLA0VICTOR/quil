@@ -65,6 +65,7 @@ The crew works through **Mozaik**, sharing findings and responding when another 
 | Capability | What it does |
 | --- | --- |
 | Conversational brief | Collects your service, target business category and location, asking for missing details as needed. |
+| Contextual AI chat | Understands casual follow-ups and corrections using recent messages and your recorded research, with one bounded model request per turn. |
 | Business discovery | Finds relevant businesses through public search results, business listings and social profiles. |
 | Website investigation | Checks listed website pages, booking links and public email links. |
 | Independent review | Cross-checks findings, reconciles conflicting evidence and revises or withdraws unsupported pitches. |
@@ -87,7 +88,7 @@ The crew works through **Mozaik**, sharing findings and responding when another 
 5. **Make contact.** Connect Gmail and Google Calendar, confirm the business email, and review the exact message before approving delivery.
 6. **Keep the conversation moving.** Review eligible follow-ups, check for replies and prepare a meeting invitation for an agreed time.
 
-Open the [live workspace](https://quil-xx.vercel.app/#/workspace) and choose **Or try a little example** to explore the workflow with fictional businesses. Sign in with Google for private live research and saved opportunities. Use the envelope button to connect Gmail and Calendar.
+Open the [live workspace](https://quil-xx.vercel.app/#/workspace) and choose **Or try a little example** to explore the workflow with fictional businesses. Try limited live chat and research before connecting Gmail. Sign in with Google to keep saved opportunities with your account; connect Gmail to continue beyond the preview allowance. Use the envelope button to connect Gmail and Calendar.
 
 ## Meet the crew
 
@@ -268,6 +269,7 @@ The application uses same-origin JSON endpoints under `/api`, with HttpOnly sess
 | POST | `/api/auth/logout` | End the account session. |
 | GET / PUT | `/api/me/saved` | Read or update private saved prospects. |
 | POST | `/api/brief` | Extract the research brief and request missing details. |
+| POST | `/api/chat` | Answer live conversation, including the limited guest preview using recent messages and owned research, or clarify a new search. |
 | POST | `/api/runs` | Create a mission and return its snapshot, token and event URL. |
 | GET | `/api/runs/:id` | Retrieve the mission and usage records. |
 | GET | `/api/runs/:id/events` | Stream events and replay from a cursor. |
@@ -293,7 +295,7 @@ Example fixture request for `POST /api/runs`:
 }
 ```
 
-Live requests include `request`, `category`, `location`, `service` and an optional `limit` of 1–3. The conversation prepares these fields through `/api/brief` before starting a mission.
+Live research requests include `request`, `category`, `location`, `service` and an optional `limit` of 1–3. Live conversation prepares these fields through the model-backed `/api/chat` endpoint before starting a mission. The free fictional example retains `/api/brief`. See [Conversation](docs/CONVERSATION.md) for history, evidence, ownership and usage controls.
 
 ## Development and validation
 

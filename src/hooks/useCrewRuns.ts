@@ -9,6 +9,7 @@ import {
 } from "../lib/run-view";
 import type { ChatItem, MissionView } from "../lib/run-view";
 import type { AgentId, Brief, CreatedRun } from "../../shared/mission";
+import { readConversationCache, saveConversationCache } from "../lib/conversation-cache";
 
 function remember(value: CreatedRun | null, storageKey: string) {
   try {
@@ -39,14 +40,18 @@ function remembered(storageKey: string): CreatedRun | null {
 export function useCrewRuns(storageKey: string) {
   const [items, setItems] = useState<ChatItem[]>(() => {
     const saved = remembered(storageKey);
-    return saved ? [fromCreated(saved)] : [];
+    const cached = readConversationCache(storageKey);
+    if (saved && !cached.some(item => item.kind === "mission" && item.id === saved.run.id)) cached.push(fromCreated(saved));
+    return cached;
   });
+  const [connectionRequired, setConnectionRequired] = useState(false);
   const [busy, setBusy] = useState(false);
   const active = useRef<CreatedRun | null>(null),
     closeStream = useRef<(() => void) | null>(null),
     generation = useRef(0),
     mounted = useRef(false),
     starting = useRef(false);
+  useEffect(() => saveConversationCache(storageKey, items), [storageKey, items]);
   const update = useCallback(
     (id: string, change: (view: MissionView) => MissionView) =>
       setItems((current) =>
@@ -152,8 +157,10 @@ export function useCrewRuns(storageKey: string) {
   ) => {
     if (starting.current || active.current) return;
     starting.current = true;
+    setConnectionRequired(false);
     setBusy(true);
-    remember(null, storageKey);
+    // Keep the last valid run until a new one is admitted. A preview limit or
+    // network error must not discard the research we can still recover.
     const id = crypto.randomUUID(),
       version = generation.current;
     setItems((current) => [...current, { ...newMission(id, request), brief }]);
@@ -175,6 +182,7 @@ export function useCrewRuns(storageKey: string) {
       remember(created, storageKey);
       attach(created);
     } catch (error) {
+      if ((error as { code?: string }).code === "CONNECT_GOOGLE_REQUIRED") setConnectionRequired(true);
       if (mounted.current && generation.current === version)
         update(id, (view) => ({
           ...view,
@@ -256,5 +264,6 @@ export function useCrewRuns(storageKey: string) {
     say,
     filterOpportunities,
     hasActive: !!lastMission && !ended(lastMission.status),
+    connectionRequired,
   };
 }

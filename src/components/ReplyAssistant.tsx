@@ -1,25 +1,27 @@
 import { useState } from "react";
-import type { Conversation, ReplyPlan } from "../../shared/outreach";
+import type { Conversation, OfferTerms, ReplyPlan } from "../../shared/outreach";
 import { draftReply, readConversation } from "../lib/outreach-api";
 
 export default function ReplyAssistant({
   rootId,
   onReply,
   onMeeting,
+  initialTerms,
 }: {
   rootId: string;
   onReply: (plan: ReplyPlan) => void;
   onMeeting: (start: string) => void;
+  initialTerms?: OfferTerms;
 }) {
   const [conversation, setConversation] = useState<Conversation>();
   const [plan, setPlan] = useState<ReplyPlan>();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const [scope, setScope] = useState(""),
-    [currency, setCurrency] = useState("USD");
-  const [price, setPrice] = useState(""),
-    [minimum, setMinimum] = useState("");
-  const [delivery, setDelivery] = useState("");
+  const [scope, setScope] = useState(initialTerms?.scope ?? ""),
+    [currency, setCurrency] = useState<string>(initialTerms?.currency ?? "USD");
+  const [price, setPrice] = useState(initialTerms ? (initialTerms.priceMinor / 100).toFixed(2) : ""),
+    [minimum, setMinimum] = useState(initialTerms ? (initialTerms.minimumMinor / 100).toFixed(2) : "");
+  const [delivery, setDelivery] = useState(initialTerms ? String(initialTerms.deliveryDays) : "");
   const [preparing, setPreparing] = useState(false);
   const [checkedAt, setCheckedAt] = useState("");
   const read = async () => {
