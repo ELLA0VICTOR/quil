@@ -1,13 +1,15 @@
 # Replies and offer terms
 
-Quil continues a conversation after an approved introduction has been delivered. Open **Contact & next steps → The conversation → Read conversation** to view the latest messages from that thread.
+Quil continues a conversation after an approved introduction has been delivered. Open **Contact & next steps → Conversation → Read conversation** to view the latest messages from that thread.
+
+Business details open in a separate view. Use **Evidence**, **Introduction**, **Offer** and **Contact** to switch sections. **Close** or Escape returns to the results without moving the conversation. Within Contact, **Conversation** reads replies, **Write** edits messages, **Meeting** prepares an invitation and **Activity** shows sent items and status checks. Edits remain available when switching sections or closing and reopening the view during the same page session.
 
 ## Prepare a response
 
 1. Read the business's latest reply.
 2. Expand **Set your offer terms** and enter the scope, currency, quote, minimum price and working-day delivery time. Supported currencies are USD, GBP, EUR and NGN. An empty minimum uses the quoted price.
 3. Choose **Prepare a response**. Wren identifies the reply's intent and prepares a draft. Iris reviews the source quote and price boundaries.
-4. Select **Edit this reply** to move it into the composer. Complete any answer to a specific project question, check the contact and prepare the approval preview.
+4. Select **Edit this reply** to open **Write**. Complete any answer to a specific project question, check the contact and prepare the approval preview.
 5. Review the exact sender, recipient and message, then approve delivery.
 
 For a price discussion, a single clearly stated counteroffer can influence the proposed fee within your minimum and quoted price. Scope and delivery come from the terms you entered. Without completed terms, the draft asks about scope, budget and timing. The minimum is used inside Quil; it is not sent to the intent-analysis model or included as a private-limit field in the email.
@@ -16,7 +18,7 @@ Explicit declines and requests to stop contact halt further outreach. Incoming t
 
 ## Meeting handoff
 
-A future date/time expressed with an explicit timezone, such as `2026-11-02T14:00:00+01:00`, can prefill the meeting form. Relative dates such as “next Tuesday afternoon” require confirmation. You review the time, timezone, attendee and agenda; the existing availability check runs before invitation creation. The attendee's Calendar response determines acceptance.
+A future date/time expressed with an explicit timezone, such as `2026-11-02T14:00:00+01:00`, can prefill the meeting form. Relative dates such as “next Tuesday afternoon” require confirmation. You review the time, timezone, attendee and agenda; the existing availability check runs before invitation creation. After sending, open **Activity → Check status**. The attendee's Calendar response determines acceptance.
 
 ## Coordination and usage
 

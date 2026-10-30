@@ -115,7 +115,7 @@ try {
   };
   const click = async (selector) =>
     evaluate(
-      `(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)throw Error('Missing '+${JSON.stringify(selector)});el.click();return true})()`,
+      `(()=>{const el=document.querySelector(${JSON.stringify(selector)});if(!el)throw Error('Missing '+${JSON.stringify(selector)});el.focus();el.click();return true})()`,
     );
   const screenshot = async (name) => {
     const result = await send("Page.captureScreenshot", {
@@ -370,7 +370,7 @@ try {
   const evidence = await evaluate(
     "document.querySelectorAll('.lead-evidence>div').length",
   );
-  await click(".lead-entry-links button:nth-child(2)");
+  await click(".prospect-dialog[open] .prospect-sections button:nth-child(2)");
   const draft = await evaluate("!!document.querySelector('.lead-introduction textarea')");
   await screenshot("18-inline-introduction");
   await evaluate(
@@ -381,7 +381,7 @@ try {
     "JSON.parse(localStorage.getItem('quil:'+window.__quilQaUserId+':saved:v3'))[0].draft.includes('A short outline is available.')",
   );
   await evaluate(
-    "[...document.querySelectorAll('.lead-entry-links button')].find(button=>button.textContent.includes('Tailored offer')).click()",
+    "[...document.querySelector('.prospect-dialog[open]').querySelectorAll('.prospect-sections button')].find(button=>button.textContent==='Offer').click()",
   );
   const tailoredOffer = await evaluate(
     "document.querySelector('.tailored-offer textarea')?.value.includes('To be agreed')",
@@ -395,12 +395,19 @@ try {
   );
   await screenshot("64-editable-tailored-offer");
   await evaluate(
-    "[...document.querySelectorAll('.lead-entry-links button')].find(button=>button.textContent.includes('Contact & next steps')).click()",
+    "[...document.querySelector('.prospect-dialog[open]').querySelectorAll('.prospect-sections button')].find(button=>button.textContent==='Contact').click()",
   );
   const fictionalOutreachBlocked = await evaluate(
     "document.querySelector('.outreach-note')?.textContent.includes('fictional business')&&!document.querySelector('.outreach-compose')",
   );
-  await click(".lead-entry-links button:nth-child(2)");
+  const businessDialog = await evaluate(`(()=>{
+    const d=document.querySelector('.prospect-dialog[open]'),h=d.querySelector('header').getBoundingClientRect(),
+      c=d.querySelector('.prospect-dialog-content').getBoundingClientRect();
+    return d.querySelectorAll('.prospect-sections button').length===4&&h.bottom<=c.top&&d.scrollHeight===d.clientHeight;
+  })()`);
+  await click(".prospect-dialog[open] .prospect-close");
+  await wait(80);
+  const businessDialogClosed = await evaluate("!document.querySelector('.prospect-dialog[open]')&&document.activeElement?.closest('.lead-entry-links')!==null");
   await click(".room-saved-button");
   await wait(150);
   const saved = await evaluate(
@@ -496,6 +503,13 @@ try {
   await click(".room-saved-button");
   const mobileSaved = await evaluate("({fits:document.querySelector('.side-sheet').scrollWidth<=document.querySelector('.side-sheet').clientWidth,remove:!!document.querySelector('.saved-leads .lead-remove')})");
   await screenshot("55-mobile-saved-remove");
+  await click(".saved-leads .lead-entry-links button:first-child");
+  const mobileBusinessDialog = await evaluate(`(()=>{const d=document.querySelector('.prospect-dialog[open]'),r=d.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&d.scrollWidth===d.clientWidth&&d.querySelector('.prospect-close').getBoundingClientRect().right<=innerWidth})()`);
+  await screenshot("57-mobile-business-details");
+  await send("Input.dispatchKeyEvent", {type:"keyDown",key:"Escape",code:"Escape"});
+  await send("Input.dispatchKeyEvent", {type:"keyUp",key:"Escape",code:"Escape"});
+  await wait(80);
+  const savedStaysOpen = await evaluate("!document.querySelector('.prospect-dialog[open]')&&!!document.querySelector('.saved-leads')");
   await send("Input.dispatchKeyEvent", {type:"keyDown",key:"Escape",code:"Escape"});
   await send("Input.dispatchKeyEvent", {type:"keyUp",key:"Escape",code:"Escape"});
   await click(".room-header .icon-button");
@@ -673,6 +687,7 @@ try {
       );
   }
   const report = {
+    businessDialog, businessDialogClosed, mobileBusinessDialog, savedStaysOpen,
     desktop,
     autoMorph,
     landingCrew,
@@ -753,6 +768,7 @@ try {
     !mission.exampleLabel ||
     exchange.rounds !== 1 ||
     !compactAnswer ||
+    !businessDialog || !businessDialogClosed || !mobileBusinessDialog || !savedStaysOpen ||
     savedReadability.color !== "rgb(237, 240, 245)" ||
     savedReadability.font !== "16px" ||
     exchange.agents !== 5 ||

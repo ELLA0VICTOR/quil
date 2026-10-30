@@ -1,0 +1,126 @@
+/* One business, one scroll area. Navigation and Close stay in reach. */
+.prospect-dialog {
+  width: min(800px, calc(100vw - 40px));
+  height: min(780px, calc(100svh - 56px));
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 1px solid #ffffff25;
+  border-radius: 20px;
+  color: #f4f6fa;
+  background: #0c121d;
+  box-shadow: 0 24px 100px #0008;
+  overflow: hidden;
+  font-family: var(--body);
+}
+.prospect-dialog[open] {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+.prospect-dialog::backdrop { background: #02050cc7; backdrop-filter: blur(7px); }
+.prospect-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 26px 16px;
+}
+.prospect-dialog-heading > div { min-width: 0; }
+.prospect-dialog-heading span { color: #aebbcf; font-size: 12px; }
+.prospect-dialog-heading h2 {
+  margin: 4px 0 0;
+  font: 600 20px/1.4 var(--body);
+  overflow-wrap: anywhere;
+}
+.prospect-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  color: #edf2fa;
+  padding: 8px 0 8px 10px;
+  flex-shrink: 0;
+}
+.prospect-sections, .contact-sections {
+  display: flex;
+  align-items: stretch;
+  gap: 22px;
+  border-bottom: 1px solid #ffffff21;
+}
+.prospect-sections { padding: 0 26px; }
+.prospect-sections button, .contact-sections button {
+  padding: 12px 0;
+  color: #b9c5d7;
+  border-bottom: 2px solid transparent;
+  font: 500 14px/1.4 var(--body);
+  white-space: nowrap;
+}
+.prospect-sections button[aria-pressed="true"],
+.contact-sections button[aria-pressed="true"] {
+  color: #fff;
+  border-color: #b4d5ff;
+}
+.prospect-dialog-content {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 20px 26px 26px;
+}
+.prospect-dialog [hidden] { display: none !important; }
+.prospect-dialog :is(.lead-evidence, .lead-introduction, .outreach-panel) {
+  padding: 0;
+  margin: 0;
+  color: #f1f4fa;
+}
+.prospect-dialog .lead-introduction > textarea {
+  min-height: 220px;
+  height: 32svh;
+  max-height: 440px;
+  resize: vertical;
+}
+.prospect-dialog .tailored-offer > textarea { height: 40svh; }
+.prospect-dialog .lead-evidence > div { padding-block: 16px; }
+.prospect-dialog .outreach-sender { margin: 0 0 6px; font-size: 12px; }
+.contact-sections { gap: 20px; position: sticky; top: -20px; z-index: 2; background: #0c121d; }
+.contact-empty { padding: 22px 0; }
+.prospect-dialog :is(.outreach-compose, .outreach-preview, .outreach-history, .reply-assistant) {
+  border: 0;
+  margin: 0;
+  padding: 20px 0 0;
+}
+.prospect-dialog .outreach-compose { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.prospect-dialog .outreach-compose > * { grid-column: 1 / -1; }
+.prospect-dialog .outreach-compose > label:has(input[type="email"]),
+.prospect-dialog .outreach-compose > label:has(input[type="datetime-local"]) { grid-column: 1; }
+.prospect-dialog .outreach-compose textarea { min-height: 140px; resize: vertical; }
+.prospect-dialog .outreach-compose > .button { justify-self: start; position: sticky; bottom: -26px; margin-top: 8px; }
+.prospect-dialog .outreach-preview > .button { position: sticky; bottom: -26px; }
+.prospect-dialog .reply-heading { align-items: center; }
+.prospect-dialog .reply-heading h4 { margin: 0; }
+.prospect-dialog .reply-messages details { border-bottom: 1px solid #ffffff14; }
+.prospect-dialog .reply-messages details[open] summary span { display: none; }
+.prospect-dialog .reply-messages summary span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 14px;
+}
+.prospect-dialog .outreach-history > div { padding: 14px 0; border-bottom: 1px solid #ffffff1c; }
+@media (max-width: 600px) {
+  .prospect-dialog {
+    width: calc(100vw - 16px);
+    height: calc(100svh - 20px);
+    border-radius: 14px;
+  }
+  .prospect-dialog-heading { padding: 16px 16px 12px; gap: 10px; }
+  .prospect-dialog-heading h2 { font-size: 17px; }
+  .prospect-sections { padding-inline: 16px; gap: 20px; }
+  .prospect-dialog-content { padding: 16px 16px 22px; }
+  .prospect-sections button, .contact-sections button { font-size: 13px; }
+  .contact-sections { gap: 18px; top: -16px; }
+  .prospect-dialog .outreach-compose { display: block; }
+  .prospect-dialog .outreach-compose > .button,
+  .prospect-dialog .outreach-preview > .button { bottom: -22px; }
+}

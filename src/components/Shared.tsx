@@ -59,6 +59,9 @@ export function Sheet({
       element = ref.current;
     element?.querySelector<HTMLButtonElement>("button")?.focus();
     const key = (event: KeyboardEvent) => {
+      // A business dialog can open over Saved. Let the top native dialog own
+      // Escape and focus trapping; keep the saved list and its scroll position.
+      if (document.querySelector("dialog[open]")) return;
       if (event.key === "Escape") onClose();
       if (event.key === "Tab" && element) {
         const nodes = [

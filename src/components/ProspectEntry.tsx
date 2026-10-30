@@ -3,6 +3,8 @@ import { Icon } from "./Icon";
 import type { Prospect } from "../lib/run-view";
 import { safeSourceUrl } from "../lib/run-view";
 import OutreachPanel from "./OutreachPanel";
+import ProspectDialog from "./ProspectDialog";
+type DetailView = "none" | "evidence" | "draft" | "offer" | "outreach";
 export default function ProspectEntry({
   prospect,
   saved,
@@ -24,11 +26,16 @@ export default function ProspectEntry({
   onOfferChange?: (offer: string) => void;
   onRemove?: () => void;
 }) {
-  const [view, setView] = useState<"none" | "evidence" | "draft" | "offer" | "outreach">(
+  const [view, setView] = useState<DetailView>(
       "none",
     ),
     [draft, setDraft] = useState(prospect.draft);
   const [offer, setOffer] = useState(prospect.offer ?? "");
+  const [contactOpened, setContactOpened] = useState(false);
+  const selectView = (value: DetailView) => {
+    if (value === "outreach") setContactOpened(true);
+    setView(value);
+  };
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(draft);
@@ -53,7 +60,7 @@ export default function ProspectEntry({
             />
             <button
               className="lead-name-button"
-              onClick={() => setView(view === "evidence" ? "none" : "evidence")}
+              onClick={() => selectView("evidence")}
               aria-expanded={view === "evidence"}
             >
               {prospect.name}
@@ -90,14 +97,14 @@ export default function ProspectEntry({
       )}
       <div className="lead-entry-links">
         <button
-          onClick={() => setView(view === "evidence" ? "none" : "evidence")}
+          onClick={() => selectView("evidence")}
           aria-expanded={view === "evidence"}
         >
           See the evidence <Icon name="chevron" size={11} />
         </button>
         {!!prospect.draft && (
           <button
-            onClick={() => setView(view === "draft" ? "none" : "draft")}
+            onClick={() => selectView("draft")}
             aria-expanded={view === "draft"}
           >
             <Icon name="feather" size={12} /> Introduction
@@ -105,7 +112,7 @@ export default function ProspectEntry({
         )}
         {!!offer && (
           <button
-            onClick={() => setView(view === "offer" ? "none" : "offer")}
+            onClick={() => selectView("offer")}
             aria-expanded={view === "offer"}
           >
             Tailored offer
@@ -113,7 +120,7 @@ export default function ProspectEntry({
         )}
         {!!prospect.draft && (
           <button
-            onClick={() => setView(view === "outreach" ? "none" : "outreach")}
+            onClick={() => selectView("outreach")}
             aria-expanded={view === "outreach"}
           >
             Contact & next steps
@@ -144,6 +151,15 @@ export default function ProspectEntry({
           </button>
         )}
       </div>
+      <ProspectDialog name={prospect.name} active={view}
+        onSelect={(value) => selectView(value as DetailView)}
+        onClose={() => setView("none")}
+        sections={[
+          { id: "evidence", label: "Evidence" },
+          ...(prospect.draft ? [{ id: "draft", label: "Introduction" }] : []),
+          ...(offer ? [{ id: "offer", label: "Offer" }] : []),
+          ...(prospect.draft ? [{ id: "outreach", label: "Contact" }] : []),
+        ]}>
       {view === "evidence" && (
         <div className="lead-evidence">
           <span className="small-label">SOURCE RECORDS</span>
@@ -249,9 +265,10 @@ export default function ProspectEntry({
           )}
         </div>
       )}
-      {view === "outreach" && (
+      {contactOpened && <div hidden={view !== "outreach"}>
         <OutreachPanel prospect={{ ...prospect, offer }} draft={draft} />
-      )}
+      </div>}
+      </ProspectDialog>
     </article>
   );
 }

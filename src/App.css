@@ -3,6 +3,7 @@
 @import "./styles/exchange.css";
 @import "./styles/conversation.css";
 @import "./styles/workspace.css";
+@import "./styles/prospect.css";
 
 .button {
   display: inline-flex;

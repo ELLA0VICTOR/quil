@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Prospect } from "../lib/run-view";
 import type { OutreachAction, GoogleStatus, ReplyPlan } from "../../shared/outreach";
 import {
@@ -44,6 +44,7 @@ export default function OutreachPanel({
     [message, setMessage] = useState(draft),
     [includeOffer, setIncludeOffer] = useState(false);
   const [replyPlan, setReplyPlan] = useState<ReplyPlan>();
+  const [section, setSection] = useState<"conversation" | "compose" | "meeting" | "history">("compose");
   const [start, setStart] = useState(""),
     [duration, setDuration] = useState(20),
     [timeZone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -53,6 +54,12 @@ export default function OutreachPanel({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [preview, setPreview] = useState<OutreachAction>();
+  const panel = useRef<HTMLDivElement>(null);
+  const drafts = useRef<Partial<Record<typeof kind, { subject: string; message: string }>>>({});
+  const writeKind = useRef<"email" | "follow_up" | "reply">("email");
+  useEffect(() => {
+    panel.current?.closest(".prospect-dialog-content")?.scrollTo({ top: 0, behavior: "instant" });
+  }, [section, preview?.id]);
   useEffect(() => {
     if (prospect.fictional) return;
     let alive = true;
@@ -66,6 +73,14 @@ export default function OutreachPanel({
             setActions(result.actions);
             const pending = result.actions.find((action) => action.state === "prepared");
             setPreview(pending);
+            if (pending) {
+              setKind(pending.kind);
+              setSubject(pending.subject);
+              setMessage(pending.text);
+              setSection(pending.kind === "meeting" ? "meeting" : "compose");
+            } else if (result.actions.some((action) => action.kind === "email" && action.state === "sent")) {
+              setSection("conversation");
+            }
             setRecipient(result.actions[0]?.recipient ?? "");
           }
         }
@@ -87,6 +102,9 @@ export default function OutreachPanel({
       const result = await outreachAction(id, operation);
       update(result.action);
       if (result.action.state !== "prepared") setPreview(undefined);
+      if (operation === "approve" && result.action.state === "sent") {
+        setSection(result.action.kind === "meeting" ? "history" : "conversation");
+      }
     } catch (error) {
       setError((error as Error).message);
       if (prospect.runId && prospect.candidateId) {
@@ -103,8 +121,17 @@ export default function OutreachPanel({
     }
   };
   const choose = (value: typeof kind) => {
+    drafts.current[kind] = { subject, message };
+    if (kind !== "meeting") writeKind.current = kind;
     setKind(value);
+    setSection(value === "meeting" ? "meeting" : "compose");
     setError("");
+    const previous = drafts.current[value];
+    if (previous) {
+      setSubject(previous.subject);
+      setMessage(previous.message);
+      return;
+    }
     if (value === "email") {
       setSubject(`A booking-page idea for ${prospect.name}`);
       setMessage(draft);
@@ -197,16 +224,33 @@ export default function OutreachPanel({
       </p>
     );
   return (
-    <div className="outreach-panel">
-      {!status?.connected ? (
+    <div className="outreach-panel" ref={panel}>
+      {!status ? (
+        <p role="status">{error ? "Your connection could not be loaded." : "Opening your connection…"}</p>
+      ) : !status.connected ? (
         <GoogleSettings />
       ) : (
         <>
-          <p className="outreach-note">
-            Sending from {status.email}. Use a business address you have checked; a source
-            profile does not identify the owner’s email automatically.
-          </p>
-          {!!actions.length && (
+          <p className="outreach-note outreach-sender">From {status.email}</p>
+          <nav className="contact-sections" aria-label="Contact sections">
+            <button aria-pressed={section === "conversation"} disabled={busy || !!preview}
+              onClick={() => setSection("conversation")}>Conversation</button>
+            <button aria-pressed={section === "compose"} disabled={busy || !!preview}
+              onClick={() => {
+                if (kind === "meeting") choose(writeKind.current);
+                else setSection("compose");
+              }}>Write</button>
+            <button aria-pressed={section === "meeting"} disabled={busy || !!preview}
+              onClick={() => { if (kind !== "meeting") choose("meeting"); else setSection("meeting"); }}>Meeting</button>
+            <button aria-pressed={section === "history"} disabled={busy || !!preview}
+              onClick={() => setSection("history")}>Activity</button>
+          </nav>
+          {section === "conversation" && !actions.some((action) => action.kind === "email" && action.state === "sent") && (
+            <div className="contact-empty"><p>Your conversation starts with an introduction.</p>
+              <button className="text-link" onClick={() => choose("email")}>Write an introduction</button></div>
+          )}
+          {section === "history" && !actions.length && <p>No messages or invitations yet.</p>}
+          {!!actions.length && section === "history" && !preview && (
             <div className="outreach-history">
               {actions.map((action) => (
                 <div key={action.id}>
@@ -261,7 +305,8 @@ export default function OutreachPanel({
               ))}
             </div>
           )}
-          {!preview &&
+          <div hidden={section !== "conversation" || !!preview}>
+          {
             actions.find(
               (action) => action.kind === "email" && action.state === "sent",
             ) && (
@@ -273,13 +318,16 @@ export default function OutreachPanel({
                   )!.id
                 }
                 onReply={(plan) => {
+                  drafts.current[kind] = { subject, message };
                   setReplyPlan(plan);
+                  writeKind.current = "reply";
                   setKind("reply");
                   setMessage(plan.text);
                   setSubject(plan.subject);
                   setRecipient(plan.recipient);
                   setConfirmed(false);
                   setError("");
+                  setSection("compose");
                 }}
                 onMeeting={(value) => {
                   choose("meeting");
@@ -292,6 +340,7 @@ export default function OutreachPanel({
                 }}
               />
             )}
+          </div>
           {preview ? (
             <div className="outreach-preview">
               <h4>Review before {preview.kind === "meeting" ? "inviting" : "sending"}</h4>
@@ -340,8 +389,9 @@ export default function OutreachPanel({
               </button>
             </div>
           ) : (
-            <div className="outreach-compose">
-              <label>
+            <div className="outreach-compose" hidden={section !== "compose" && section !== "meeting"}>
+              <h4>{kind === "meeting" ? "Arrange a meeting" : kind === "reply" ? "Review your reply" : "Write a message"}</h4>
+              <label hidden={kind === "meeting"}>
                 Next step
                 <select
                   value={kind}
@@ -352,7 +402,6 @@ export default function OutreachPanel({
                   <option value="reply" disabled={!replyPlan}>
                     Reply to the conversation
                   </option>
-                  <option value="meeting">Arrange a meeting</option>
                 </select>
               </label>
               <label>
