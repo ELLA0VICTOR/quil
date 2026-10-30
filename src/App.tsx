@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import Landing from "./pages/Landing";
 import CrewRoom from "./pages/CrewRoom";
 import { Cursor } from "./components/Shared";
@@ -15,11 +15,14 @@ function QuilApp() {
     const change = () => {
       const next = location.hash.startsWith("#/workspace");
       setInRoom(next);
-      if (next) window.scrollTo(0, 0);
     };
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
   }, []);
+  useLayoutEffect(() => {
+    // Reset after the new page exists, without the global smooth-scroll delay.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [inRoom]);
   useEffect(() => {
     document.title = inRoom
       ? "Your crew · Quil"
@@ -27,12 +30,11 @@ function QuilApp() {
   }, [inRoom]);
   const openRoom = () => {
     location.hash = "/workspace";
-    window.scrollTo(0, 0);
+    setInRoom(true);
   };
   const goHome = () => {
     location.hash = "";
     setInRoom(false);
-    window.scrollTo(0, 0);
   };
   return (
     <>

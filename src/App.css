@@ -653,6 +653,14 @@
   font: 45px var(--display);
   text-shadow: 0 0 20px #459cff;
 }
+.scene-recovery { position: absolute; inset: 0; z-index: -1; }
+.scene-recovery > .text-link {
+  position: absolute;
+  left: 50%;
+  top: 70%;
+  transform: translateX(-50%);
+  font-size: 13px;
+}
 .fallback-cube {
   position: absolute;
   inset: -90px;

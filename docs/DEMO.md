@@ -1,6 +1,6 @@
 # Quil demo walkthrough
 
-Target length: about three minutes. Adjust to the submission form's recording limit.
+For the complete read-aloud narration and screen directions, use [DEMO-SCRIPT.md](DEMO-SCRIPT.md). It allows a slower homepage tour, a short live email/reply test and previous-test evidence for the remaining workflow. The shorter outline below targets about three minutes; follow the submission form's recording limit.
 
 ## Finish the rehearsal
 
@@ -47,4 +47,4 @@ Open the corresponding Mozaik Cloud run in another tab before recording. Use a r
 - The intended result, evidence, offer and Cloud trace are open and easy to find.
 - Check the current submission form for its duration, format and required links.
 
-The operator confirmed production Google connection. The latest frontend and service health were checked on 30 October. Automated checks cover agent coordination, reply boundaries, approvals, shared-database concurrency and eleven responsive viewports. The controlled real reply and invitation rehearsal requires the operator's confirmation before recording those steps as demonstrated live behavior.
+The operator confirmed production Google connection and subsequently reported the remaining practical tests working before requesting the final demo script. The latest frontend and service health were checked on 30 October. Automated checks cover agent coordination, reply boundaries, approvals, shared-database concurrency and eleven responsive viewports. Use the actual completed-test conversation and invitation as evidence during the recording.

@@ -4,7 +4,10 @@ import { Icon } from "./Icon";
 
 export function Brand({ onClick }: { onClick?: () => void }) {
   return (
-    <a className="brand" href="#" onClick={onClick} aria-label="Quil home">
+    <a className="brand" href="#" onClick={onClick ? (event) => {
+      event.preventDefault();
+      onClick();
+    } : undefined} aria-label="Quil home">
       <Icon name="feather" size={29} />
       <span>
         Quil<span className="brand-period">.</span>

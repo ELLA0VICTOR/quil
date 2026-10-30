@@ -686,7 +686,39 @@ try {
         "Browser account isolation failed: " + JSON.stringify(accountIsolation),
       );
   }
+  // Enter the workspace directly, as a returning user does. Earlier checks
+  // began at home, which had already cached the lazily loaded animation.
+  const homeNavigation = [];
+  await send("Network.setCacheDisabled", { cacheDisabled: true });
+  for (const blockScene of [false, true]) {
+    await send("Page.navigate", { url: "about:blank" });
+    await wait(100);
+    expectedNetworkFailure = blockScene;
+    await send("Network.setBlockedURLs", { urls: blockScene ? ["*ParticleScene-*.js*"] : [] });
+    await send("Page.navigate", { url: qaBase + "/#/workspace" });
+    await wait(150);
+    for (let i = 0; i < 100; i++) {
+      if (await evaluate("!!document.querySelector('.room-header .brand')")) break;
+      await wait(50);
+    }
+    await click(".room-header .brand");
+    for (let i = 0; i < 100; i++) {
+      if (await evaluate(blockScene ? "!!document.querySelector('.scene-recovery')" : "!!document.querySelector('.hero-section canvas')")) break;
+      await wait(50);
+    }
+    homeNavigation.push(await evaluate(`({blocked:${blockScene},
+      homeVisible:!!document.querySelector('.hero-section')&&!!document.querySelector('.site-header'),
+      heading:document.querySelector('h1')?.textContent==='Your next client.Already in sight.',
+      atTop:scrollY===0,homeRoute:!location.hash.startsWith('#/workspace'),
+      animation:!!document.querySelector('.hero-section canvas'),
+      fallback:!!document.querySelector('.scene-recovery'),
+      usable:!!document.querySelector('.header-cta')&&!!document.querySelector('.site-footer')})`));
+    if (blockScene) await screenshot("58-home-animation-recovery");
+  }
+  await send("Network.setBlockedURLs", { urls: [] });
+  expectedNetworkFailure = false;
   const report = {
+    homeNavigation,
     businessDialog, businessDialogClosed, mobileBusinessDialog, savedStaysOpen,
     desktop,
     autoMorph,
@@ -768,6 +800,7 @@ try {
     !mission.exampleLabel ||
     exchange.rounds !== 1 ||
     !compactAnswer ||
+    homeNavigation.some(view => !view.homeVisible || !view.heading || !view.atTop || !view.homeRoute || !view.usable || (view.blocked ? !view.fallback : !view.animation)) ||
     !businessDialog || !businessDialogClosed || !mobileBusinessDialog || !savedStaysOpen ||
     savedReadability.color !== "rgb(237, 240, 245)" ||
     savedReadability.font !== "16px" ||

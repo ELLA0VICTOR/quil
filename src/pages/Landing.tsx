@@ -1,9 +1,8 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { Brand } from "../components/Shared";
 import { Icon } from "../components/Icon";
 import CrewScene from "../components/CrewScene";
-
-const ParticleScene = lazy(() => import("../components/ParticleScene"));
+import ParticleStage from "../components/ParticleStage";
 const steps = [
   {
     number: "01",
@@ -80,15 +79,7 @@ export default function Landing({
       <main>
         <section className="hero-section" id="platform">
           <div className="hero-atmosphere" aria-hidden="true" />
-          <Suspense
-            fallback={
-              <div className="scene-loading">
-                <span />
-              </div>
-            }
-          >
-            <ParticleScene onPhase={phaseChange} />
-          </Suspense>
+          <ParticleStage onPhase={phaseChange} />
           <div className="hero-copy">
             <span className="eyebrow">
               <i className="status-dot" /> A LITTLE SIGNAL. A NEW BEGINNING.
