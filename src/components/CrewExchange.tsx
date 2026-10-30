@@ -56,9 +56,7 @@ export default function CrewExchange({
       const endX = bounds.width / 2;
       const endY = bounds.height - 10;
       const paths = order.map((agent) => {
-        const node = element.querySelector<HTMLElement>(
-          `[data-agent="${agent}"]`,
-        )!;
+        const node = element.querySelector<HTMLElement>(`[data-agent="${agent}"]`)!;
         const rect = node.getBoundingClientRect();
         const left = agent === "pip" || agent === "iris";
         const x =
@@ -66,9 +64,7 @@ export default function CrewExchange({
             ? rect.left - bounds.left + rect.width / 2
             : (left ? rect.right + 8 : rect.left - 8) - bounds.left;
         const y =
-          agent === "quil"
-            ? rect.bottom - bounds.top + 6
-            : rect.top - bounds.top + 22;
+          agent === "quil" ? rect.bottom - bounds.top + 6 : rect.top - bounds.top + 22;
         return {
           agent,
           x,
@@ -102,8 +98,7 @@ export default function CrewExchange({
       data-status={status}
       aria-label="The crew's shared answer"
     >
-      <div className="exchange-brief">
-        <span>You asked</span>
+      <div className="exchange-brief" aria-label="Your request">
         <p>{request}</p>
       </div>
       <p className="exchange-example">
@@ -113,87 +108,98 @@ export default function CrewExchange({
             ? `Source-backed search · ${location}`
             : "Connecting to Quil"}
       </p>
-      <div className="collaboration-map" ref={map}>
-        {connections && (
-          <svg
-            className="collaboration-lines"
-            viewBox={`0 0 ${connections.width} ${connections.height}`}
-            aria-hidden="true"
-          >
-            {connections.paths.map(({ agent, d, x, y }) => {
-              const person = crew.find((p) => p.id === agent)!;
-              const active =
-                status === "running" &&
-                connection === "connected" &&
-                activity[agent] === "working";
-              return (
-                <g
-                  key={agent}
-                  style={{ color: person.color }}
-                  className={active ? "connection-working" : ""}
-                >
-                  <path d={d} />
-                  <circle cx={x} cy={y} r="1.6" />
-                  {active && <path d={d} className="connection-signal" />}
-                </g>
-              );
-            })}
-          </svg>
-        )}
-        {order.map((agent) => {
-          const person = crew.find((p) => p.id === agent)!;
-          const active =
-            status === "running" &&
-            connection === "connected" &&
-            activity[agent] === "working";
-          const ready = activity[agent] === "ready";
-          const text =
-            agent === "quil" && complete
-              ? "Findings checked. Over to you."
-              : (notes[agent] ?? tasks[agent]);
-          return (
-            <article
-              key={agent}
-              className={`agent-contribution contribution-${agent}`}
-              data-agent={agent}
-              data-state={
-                activity[agent] === "error"
-                  ? "error"
-                  : active
-                    ? "working"
-                    : ready
-                      ? "ready"
-                      : "waiting"
-              }
-              style={{ "--voice": person.color } as CSSProperties}
+      <details className="crew-activity" open={!complete}>
+        <summary>
+          <span>Crew activity</span>
+          <span className="crew-activity-voices" aria-hidden="true">
+            {crew.map((person) => (
+              <i key={person.id} style={{ background: person.color }} />
+            ))}
+          </span>
+          <Icon name="chevron" size={13} />
+        </summary>
+        <div className="collaboration-map" ref={map}>
+          {connections && (
+            <svg
+              className="collaboration-lines"
+              viewBox={`0 0 ${connections.width} ${connections.height}`}
+              aria-hidden="true"
             >
-              <AgentSprite
-                agent={agent}
-                mood={active ? "talking" : ready ? "happy" : "idle"}
-              />
-              <div>
-                <div className="contribution-name">
-                  <span>{person.name}</span>
-                  {active ? (
-                    <span className="contribution-pulse" aria-label="Working" />
-                  ) : ready ? (
-                    <Icon name="check" size={12} />
-                  ) : null}
+              {connections.paths.map(({ agent, d, x, y }) => {
+                const person = crew.find((p) => p.id === agent)!;
+                const active =
+                  status === "running" &&
+                  connection === "connected" &&
+                  activity[agent] === "working";
+                return (
+                  <g
+                    key={agent}
+                    style={{ color: person.color }}
+                    className={active ? "connection-working" : ""}
+                  >
+                    <path d={d} />
+                    <circle cx={x} cy={y} r="1.6" />
+                    {active && <path d={d} className="connection-signal" />}
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+          {order.map((agent) => {
+            const person = crew.find((p) => p.id === agent)!;
+            const active =
+              status === "running" &&
+              connection === "connected" &&
+              activity[agent] === "working";
+            const ready = activity[agent] === "ready";
+            const text =
+              agent === "quil" && complete
+                ? "Findings checked. Over to you."
+                : (notes[agent] ?? tasks[agent]);
+            return (
+              <article
+                key={agent}
+                className={`agent-contribution contribution-${agent}`}
+                data-agent={agent}
+                data-state={
+                  activity[agent] === "error"
+                    ? "error"
+                    : active
+                      ? "working"
+                      : ready
+                        ? "ready"
+                        : "waiting"
+                }
+                style={{ "--voice": person.color } as CSSProperties}
+              >
+                <AgentSprite
+                  agent={agent}
+                  mood={active ? "talking" : ready ? "happy" : "idle"}
+                />
+                <div>
+                  <div className="contribution-name">
+                    <span>{person.name}</span>
+                    {active ? (
+                      <span className="contribution-pulse" aria-label="Working" />
+                    ) : ready ? (
+                      <Icon name="check" size={12} />
+                    ) : null}
+                  </div>
+                  <p>{text}</p>
                 </div>
-                <p>{text}</p>
-              </div>
-            </article>
-          );
-        })}
-        <div className="collaboration-joint" aria-hidden="true">
-          <Icon name={complete ? "check" : "feather"} size={13} />
+              </article>
+            );
+          })}
+          <div className="collaboration-joint" aria-hidden="true">
+            <Icon name={complete ? "check" : "feather"} size={13} />
+          </div>
         </div>
-      </div>
+      </details>
       {complete ? (
         <section className="shared-outcome" aria-label="Combined result">
           <div className="outcome-heading">
             <Icon name="feather" size={19} />
-            <h2>Final answer</h2>
+            <h2>Quil</h2>
           </div>
           {children}
         </section>

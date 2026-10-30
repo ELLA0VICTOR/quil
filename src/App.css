@@ -1,6 +1,7 @@
 @import "./styles/crew.css";
 @import "./styles/room.css";
 @import "./styles/exchange.css";
+@import "./styles/conversation.css";
 
 .button {
   display: inline-flex;
@@ -155,7 +156,7 @@
   backdrop-filter: blur(20px);
 }
 .nav-pill a {
-  font-size: 14px;
+  font-size: 15px;
   white-space: nowrap;
   padding: 9px 16px;
   border-radius: 30px;

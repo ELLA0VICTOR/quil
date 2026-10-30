@@ -22,9 +22,9 @@ export default function ProspectEntry({
   onDraftChange?: (draft: string) => void;
   onOfferChange?: (offer: string) => void;
 }) {
-  const [view, setView] = useState<
-      "none" | "evidence" | "draft" | "offer" | "outreach"
-    >("none"),
+  const [view, setView] = useState<"none" | "evidence" | "draft" | "offer" | "outreach">(
+      "none",
+    ),
     [draft, setDraft] = useState(prospect.draft);
   const [offer, setOffer] = useState(prospect.offer ?? "");
   const copy = async () => {
@@ -118,6 +118,19 @@ export default function ProspectEntry({
             {saved ? "Saved" : "Save"}
           </button>
         )}
+        {answer && (
+          <button
+            aria-label="Copy answer"
+            onClick={() => {
+              void navigator.clipboard
+                .writeText(answerText ?? prospect.note)
+                .then(() => notify("Answer copied."))
+                .catch(() => notify("Select the answer text to copy it manually."));
+            }}
+          >
+            <Icon name="copy" size={13} /> Copy
+          </button>
+        )}
       </div>
       {view === "evidence" && (
         <div className="lead-evidence">
@@ -140,16 +153,15 @@ export default function ProspectEntry({
                   )}
                 </h4>
                 <p>{source.observation}</p>
-                {!source.fictional &&
-                  Number.isFinite(Date.parse(source.observedAt)) && (
-                    <small>
-                      {source.kind === "website_page"
-                        ? "Website page checked "
-                        : "Search record retrieved "}
-                      {new Date(source.observedAt).toLocaleString()}. This is
-                      not the page's publication date.
-                    </small>
-                  )}
+                {!source.fictional && Number.isFinite(Date.parse(source.observedAt)) && (
+                  <small>
+                    {source.kind === "website_page"
+                      ? "Website page checked "
+                      : "Search record retrieved "}
+                    {new Date(source.observedAt).toLocaleString()}. This is not the page's
+                    publication date.
+                  </small>
+                )}
               </section>
             </div>
           ))}
@@ -190,9 +202,7 @@ export default function ProspectEntry({
                 void navigator.clipboard
                   .writeText(offer)
                   .then(() => notify("Offer copied."))
-                  .catch(() =>
-                    notify("Select the offer text to copy it manually."),
-                  );
+                  .catch(() => notify("Select the offer text to copy it manually."));
               }}
             >
               <Icon name="copy" size={13} /> Copy

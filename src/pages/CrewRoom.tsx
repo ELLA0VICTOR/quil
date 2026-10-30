@@ -22,9 +22,15 @@ const exampleRequest =
   "Find cleaning businesses in Manchester that could use a simpler booking website.";
 function pendingBrief(userId: string): PreparedBrief | null {
   try {
-    const value = JSON.parse(sessionStorage.getItem(`quil:${userId}:pending-brief`) || "null");
-    return typeof value?.brief?.request === "string" && value.brief.request.length <= 2000 ? value : null;
-  } catch { return null; }
+    const value = JSON.parse(
+      sessionStorage.getItem(`quil:${userId}:pending-brief`) || "null",
+    );
+    return typeof value?.brief?.request === "string" && value.brief.request.length <= 2000
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
 }
 export default function CrewRoom({ goHome }: { goHome: () => void }) {
   const account = useAccount();
@@ -51,8 +57,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       ? "introducing"
       : "idle";
   const running =
-    session.lastMission?.status === "running" ||
-    session.lastMission?.status === "queued";
+    session.lastMission?.status === "running" || session.lastMission?.status === "queued";
   const paused = session.lastMission?.status === "paused";
   const hasMission = session.items.some((item) => item.kind === "mission");
   useEffect(
@@ -72,9 +77,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       return;
     }
     if (latest.kind === "mission") {
-      const exchange = element.querySelector(
-        `[data-mission-id="${latest.id}"]`,
-      );
+      const exchange = element.querySelector(`[data-mission-id="${latest.id}"]`);
       if (
         latest.status !== "connecting" &&
         latest.status !== "completed" &&
@@ -141,9 +144,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
           (session.lastMission?.mode === "live"
             ? { service: session.lastMission.brief?.service }
             : undefined),
-        answering: pending?.questionField
-          ? [pending.questionField]
-          : pending?.missing,
+        answering: pending?.questionField ? [pending.questionField] : pending?.missing,
       });
       if (version !== prepareVersion.current) return;
       if (!prepared.brief) {
@@ -155,12 +156,21 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         setPending(prepared);
       } else {
         if (!account.session!.user.authenticated && account.session!.mode === "live") {
-          setPending(prepared); setInput(request);
-          try { sessionStorage.setItem(`quil:${userId}:pending-brief`, JSON.stringify(prepared)); } catch {}
-          account.openAccount(); return;
+          setPending(prepared);
+          setInput(request);
+          try {
+            sessionStorage.setItem(
+              `quil:${userId}:pending-brief`,
+              JSON.stringify(prepared),
+            );
+          } catch {}
+          account.openAccount();
+          return;
         }
         setPending(null);
-        try { sessionStorage.removeItem(`quil:${userId}:pending-brief`); } catch {}
+        try {
+          sessionStorage.removeItem(`quil:${userId}:pending-brief`);
+        } catch {}
         await session.start(prepared.brief.request, prepared.brief);
       }
     } catch (error) {
@@ -190,9 +200,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       void session.control("resume");
       return;
     }
-    if (
-      /^(who (are|is)|introduce|meet (the|your)|your team)\b/i.test(request)
-    ) {
+    if (/^(who (are|is)|introduce|meet (the|your)|your team)\b/i.test(request)) {
       session.say("you", request);
       session.say(
         "quil",
@@ -201,9 +209,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       return;
     }
     if (
-      /\b(only|just)\b.*\b(opportunit|social|promising|good fit)/i.test(
-        request,
-      ) &&
+      /\b(only|just)\b.*\b(opportunit|social|promising|good fit)/i.test(request) &&
       session.lastMission?.outcome
     ) {
       session.filterOpportunities();
@@ -232,11 +238,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     void begin(request);
   };
   const composerKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey &&
-      !event.nativeEvent.isComposing
-    ) {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       if (input.trim()) event.currentTarget.form?.requestSubmit();
     }
@@ -260,9 +262,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       onDraftChange={(draft) => updateDraft(prospect, draft)}
       onOfferChange={(offer) =>
         setSaved((current) =>
-          current.map((item) =>
-            item.id === prospect.id ? { ...item, offer } : item,
-          ),
+          current.map((item) => (item.id === prospect.id ? { ...item, offer } : item)),
         )
       }
       notify={notify}
@@ -277,9 +277,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     return (
       <div className="conversation-results">
         <span className="results-note sr-only">
-          {view.mode === "fixture"
-            ? "FICTIONAL BUSINESSES"
-            : "SOURCE-BACKED FINDINGS"}
+          {view.mode === "fixture" ? "FICTIONAL BUSINESSES" : "SOURCE-BACKED FINDINGS"}
         </span>
         {primary.length ? (
           primary.map((p, index) =>
@@ -307,10 +305,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
   const exportSaved = () => {
     const cell = (value: string) =>
       '"' +
-      (/^\s*[=+\-@]|^[\t\r]/.test(value) ? "'" + value : value).replaceAll(
-        '"',
-        '""',
-      ) +
+      (/^\s*[=+\-@]|^[\t\r]/.test(value) ? "'" + value : value).replaceAll('"', '""') +
       '"';
     const rows = [
       [
@@ -337,12 +332,9 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
       ]),
     ];
     const url = URL.createObjectURL(
-      new Blob(
-        ["\ufeff", rows.map((row) => row.map(cell).join(",")).join("\r\n")],
-        {
-          type: "text/csv;charset=utf-8;",
-        },
-      ),
+      new Blob(["\ufeff", rows.map((row) => row.map(cell).join(",")).join("\r\n")], {
+        type: "text/csv;charset=utf-8;",
+      }),
     );
     const link = document.createElement("a");
     link.href = url;
@@ -364,10 +356,29 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
             <Icon name="bookmark" size={17} />
             <span>Saved{saved.length > 0 && <i>{saved.length}</i>}</span>
           </button>
-          <button className="room-account-button" onClick={account.openAccount} aria-label={account.session!.user.authenticated ? "Your Quil account" : "Sign in to Quil"} title={account.session!.user.email || "Sign in"}>{account.session!.user.authenticated ? <Icon name="settings" size={18} /> : "Sign in"}</button>
+          <button
+            className="room-account-button"
+            onClick={account.openAccount}
+            aria-label={
+              account.session!.user.authenticated
+                ? "Your Quil account"
+                : "Sign in to Quil"
+            }
+            title={account.session!.user.email || "Sign in"}
+          >
+            {account.session!.user.authenticated ? (
+              <Icon name="settings" size={18} />
+            ) : (
+              "Sign in"
+            )}
+          </button>
           <button
             className="room-connect-button"
-            onClick={() => account.session!.user.authenticated ? setPanel("google") : account.openAccount()}
+            onClick={() =>
+              account.session!.user.authenticated
+                ? setPanel("google")
+                : account.openAccount()
+            }
             aria-label="Gmail and Calendar connection"
             title="Gmail & Calendar"
           >
@@ -474,9 +485,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
                     className={`chat-message ${item.speaker === "you" ? "message-you" : "message-crew"}`}
                     key={item.id}
                     style={
-                      person
-                        ? ({ "--voice": person.color } as CSSProperties)
-                        : undefined
+                      person ? ({ "--voice": person.color } as CSSProperties) : undefined
                     }
                   >
                     {person && (
@@ -527,11 +536,7 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
             </div>
           )}
           {!session.items.length && (
-            <button
-              className="try-mission"
-              disabled={busy}
-              onClick={startExample}
-            >
+            <button className="try-mission" disabled={busy} onClick={startExample}>
               <Icon name="spark" size={13} /> Or try a little example{" "}
               <Icon name="arrow" size={13} />
             </button>
@@ -610,18 +615,11 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
             <GoogleSettings />
           ) : panel === "saved" ? (
             <>
-              <p className="sheet-description">
-                The possibilities you’ve saved for another look.
-              </p>
+              <p className="sheet-description">Your saved opportunities.</p>
               {saved.length ? (
                 <>
-                  <div className="saved-leads">
-                    {saved.map((p) => entry(p))}
-                  </div>
-                  <button
-                    className="text-link export-saved"
-                    onClick={exportSaved}
-                  >
+                  <div className="saved-leads">{saved.map((p) => entry(p))}</div>
+                  <button className="text-link export-saved" onClick={exportSaved}>
                     <Icon name="download" size={14} /> Export saved businesses
                   </button>
                 </>
@@ -629,16 +627,18 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
                 <div className="saved-nothing">
                   <Icon name="bookmark" size={25} />
                   <p>Nothing tucked away yet.</p>
-                  <span>
-                    Use the bookmark beside a business to keep it here.
-                  </span>
+                  <span>Use the bookmark beside a business to keep it here.</span>
                   <button className="text-link" onClick={closePanel}>
                     Back to the crew <Icon name="arrow" size={14} />
                   </button>
                 </div>
               )}
               <p className="sheet-footnote">
-                {account.session!.user.authenticated ? "Saved privately to your Quil account." : "Saved in this private example workspace. Sign in to keep it across devices."} Example entries contain fictional records.
+                {account.session!.user.authenticated
+                  ? "Saved privately to your Quil account."
+                  : "Sign in to keep these across devices."}
+                {saved.some((prospect) => prospect.fictional) &&
+                  " Example businesses are fictional."}
                 {savedError && <span role="status"> {savedError}</span>}
               </p>
             </>
@@ -648,20 +648,18 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
                 <AgentSprite agent="quil" mood="happy" />
               </div>
               <p className="sheet-description">
-                Quil keeps the team moving. Pip scouts, Milo investigates, Iris
-                checks, and Wren writes. You bring the direction and make the
-                final call.
+                Quil keeps the team moving. Pip scouts, Milo investigates, Iris checks,
+                and Wren writes. You bring the direction and make the final call.
               </p>
               <p className="sheet-description">
                 The crew runs through Mozaik on the server. Its events drive the
-                contributions you see here, including review corrections and the
-                final answer.
+                contributions you see here, including review corrections and the final
+                answer.
               </p>
               <p className="sheet-description">
-                The example uses fictional businesses without API credits. Live
-                search and model requests require server-side configuration.
-                Evidence stays attached to the findings; nothing is sent
-                automatically.
+                The example uses fictional businesses without API credits. Live search and
+                model requests require server-side configuration. Evidence stays attached
+                to the findings; nothing is sent automatically.
               </p>
               <button
                 className="text-link"

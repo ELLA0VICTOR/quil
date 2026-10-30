@@ -135,7 +135,7 @@ Optional **Mozaik Cloud** integration provides a hosted research trace using sel
 | --- | --- |
 | Application | React 19, TypeScript 7, Vite 8 |
 | Interface | Custom CSS, SVG agent characters, Three.js particle scene |
-| Typography | Departure Mono and SUSE Mono, self-hosted |
+| Typography | Self-hosted Departure Mono display headings and proportional system sans-serif text |
 | Agent coordination | Mozaik Core 4.2.0-beta.18 |
 | Model inference | GPT-6 Luna through the OpenAI Responses API |
 | Discovery | Serper search and bounded public website checks |

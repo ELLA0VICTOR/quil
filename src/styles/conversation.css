@@ -1,0 +1,378 @@
+/* Proportional text and open conversation layout; display headings retain Departure. */
+.nav-pill a {
+  font-size: 15px;
+}
+.room-header > div,
+.room-saved-button,
+.room-account-button {
+  color: #e4e8ef;
+}
+.room-saved-button,
+.room-account-button {
+  font-size: 14px;
+}
+.room-welcome > p {
+  color: #d5dbe5;
+  font-size: 17px;
+  line-height: 1.65;
+}
+.welcome-introduction > span {
+  color: #aeb9c9;
+  font-size: 13px;
+}
+.welcome-introduction > button,
+.try-mission,
+.resume-mission {
+  color: #d8e0eb;
+  font-size: 14px;
+}
+.room-conversation {
+  max-width: 820px;
+}
+.room-composer-area {
+  max-width: 820px;
+}
+.chat-composer {
+  border: 1px solid #ffffff20;
+  border-radius: 28px;
+  background: #1b2533;
+  box-shadow: 0 6px 24px #0002;
+  padding: 15px 14px 15px 20px;
+  gap: 14px;
+}
+.chat-composer:focus-within {
+  background: #1d2939;
+  border-color: #ffffff45;
+}
+.chat-composer > textarea {
+  color: #fff;
+  font-size: 17px;
+  line-height: 1.65;
+}
+.chat-composer > textarea::placeholder {
+  color: #b7c0cd;
+}
+.chat-composer > svg {
+  color: #d9e0e9;
+}
+.composer-send {
+  background: #f4f6fa;
+  color: #121923;
+  border: 0;
+  width: 36px;
+  height: 36px;
+}
+.composer-send:hover:enabled {
+  background: #fff;
+}
+.composer-send:disabled {
+  color: #c4ccd8;
+  background: #435063;
+  opacity: 0.6;
+}
+.composer-stop {
+  background: #e6ebf2;
+  color: #17202d;
+}
+.composer-footnote > button {
+  color: #aeb9ca;
+  font-size: 12px;
+}
+.chat-message {
+  margin-bottom: 30px;
+}
+.message-content > p {
+  color: #f5f5f7;
+  font-size: 17px;
+  line-height: 1.75;
+}
+.message-author {
+  font-size: 14px;
+}
+.message-author > i {
+  color: #aeb8c7;
+  font-size: 12px;
+}
+.message-crew .message-content {
+  border: 0;
+  padding: 0;
+}
+.message-crew .message-content > p {
+  color: #f5f5f7;
+}
+.message-you .message-author {
+  display: none;
+}
+.message-you .message-content,
+.exchange-brief {
+  max-width: min(85%, 610px);
+  margin: 8px 0 28px auto;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 25px;
+  background: #183b68;
+  color: #fff;
+}
+.message-you .message-content > p,
+.exchange-brief > p {
+  color: #fff;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.65;
+  text-align: left;
+}
+.exchange-example {
+  padding: 0;
+  margin: -10px 0 24px;
+  max-width: none;
+  font-size: 12px;
+  color: #b7c0ce;
+  text-align: right;
+}
+.crew-activity {
+  border-block: 1px solid #ffffff14;
+  margin-bottom: 24px;
+}
+.crew-activity > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  color: #c2cbd8;
+  font-size: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.crew-activity > summary::-webkit-details-marker {
+  display: none;
+}
+.crew-activity > summary > svg {
+  margin-left: auto;
+  transition: transform 0.2s;
+}
+.crew-activity[open] > summary > svg {
+  transform: rotate(180deg);
+}
+.crew-activity-voices {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.crew-activity-voices > i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.crew-activity .collaboration-map {
+  padding-top: 12px;
+}
+.agent-contribution p,
+.contribution-name {
+  font-size: 14px;
+}
+.shared-outcome {
+  border: 0;
+  max-width: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.outcome-heading {
+  gap: 9px;
+  margin: 0 0 14px;
+}
+.outcome-heading h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.answer-prose > p {
+  font-size: 17px;
+  line-height: 1.8;
+  color: #fff;
+}
+.lead-entry {
+  padding-block: 22px;
+}
+.lead-name-button,
+.saved-leads .lead-name-button {
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+}
+.lead-name-button > svg {
+  color: #c5cedc;
+}
+.lead-one-line,
+.saved-leads .lead-one-line,
+.shared-outcome .lead-one-line {
+  color: #edf0f5;
+  font-size: 16px;
+  line-height: 1.75;
+  margin-top: 10px;
+}
+.saved-leads .lead-one-line {
+  margin-left: 0;
+  margin-right: 0;
+}
+.lead-decision,
+.saved-leads .lead-decision {
+  color: #c0c9d6;
+  font-size: 12px;
+}
+.lead-save {
+  color: #d3dce8;
+}
+.lead-save.is-saved {
+  color: #fff;
+  background: #ffffff0b;
+}
+.lead-entry-links {
+  gap: 12px 20px;
+}
+.lead-entry-links > button,
+.saved-leads .lead-entry-links > button,
+.lead-introduction .text-link {
+  color: #e7ebf2;
+  font-size: 14px;
+}
+.lead-entry-links > button:hover {
+  color: #fff;
+}
+.lead-evidence h4 {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+.lead-evidence section > p {
+  color: #e3e8f0;
+  font-size: 15px;
+  line-height: 1.75;
+}
+.lead-evidence section > small,
+.evidence-footnote,
+.lead-introduction > p {
+  color: #b6c1d0;
+  opacity: 1;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.lead-introduction > textarea {
+  color: #f5f5f7;
+  font-size: 16px;
+  line-height: 1.75;
+  border-color: #ffffff35;
+}
+.results-note,
+.small-label {
+  color: #b8c3d3;
+  font: 500 11px/1.6 var(--body);
+  letter-spacing: 0.4px;
+}
+.reviewed-others > summary,
+.exchange-progress {
+  color: #c4cedb;
+  font-size: 13px;
+}
+.side-sheet {
+  color: #f4f5f8;
+  background: #0c111c;
+}
+.side-sheet .sheet-description {
+  font-size: 16px;
+  color: #e1e6ee;
+  line-height: 1.7;
+}
+.side-sheet .sheet-footnote {
+  color: #b4bfce;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.side-sheet .export-saved {
+  color: #f1f3f7;
+  font-size: 15px;
+}
+.saved-leads .lead-entry-links {
+  margin-left: 0;
+}
+.side-sheet .lead-evidence,
+.side-sheet .lead-introduction {
+  padding-left: 0;
+}
+.google-settings,
+.outreach-panel {
+  color: #f1f3f6;
+  font-size: 15px;
+  line-height: 1.75;
+}
+.account-content {
+  font-size: 16px;
+  line-height: 1.75;
+}
+.outreach-compose > label,
+.reply-terms label {
+  color: #dce3ed;
+  font-size: 14px;
+}
+.outreach-compose input:not([type="checkbox"]),
+.outreach-compose textarea,
+.outreach-compose select,
+.reply-terms input,
+.reply-terms textarea,
+.reply-terms select {
+  font-size: 16px;
+}
+.outreach-history span,
+.outreach-note {
+  color: #cbd4e1;
+}
+.reply-messages summary span {
+  color: #e8edf4;
+}
+.reply-messages time {
+  color: #b7c2d2;
+  font-size: 12px;
+}
+.reply-plan blockquote {
+  color: #e8edf4;
+}
+@media (max-height: 600px) and (min-width: 601px) {
+  .room-welcome > p { font-size: 16px; line-height: 1.45; }
+  .welcome-introduction {
+    gap: 8px;
+    margin-top: 8px;
+  }
+}
+@media (max-width: 600px) {
+  .chat-composer {
+    padding: 12px 12px 12px 16px;
+    gap: 10px;
+    border-radius: 25px;
+  }
+  .chat-composer > textarea,
+  .message-content > p,
+  .message-you .message-content > p,
+  .exchange-brief > p,
+  .answer-prose > p {
+    font-size: 16px;
+  }
+  .exchange-brief,
+  .message-you .message-content {
+    max-width: 92%;
+    padding: 11px 16px;
+  }
+  .exchange-example {
+    font-size: 11px;
+  }
+  .lead-entry-links,
+  .shared-outcome .lead-entry-links {
+    gap: 12px 16px;
+  }
+  .agent-contribution p {
+    font-size: 13px;
+  }
+  .contribution-name {
+    font-size: 13px;
+  }
+  .side-sheet {
+    padding-inline: 22px;
+  }
+}

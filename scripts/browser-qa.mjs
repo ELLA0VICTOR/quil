@@ -228,7 +228,7 @@ try {
         quietWelcome:!document.querySelector('.room-preview-indicator')&&!document.querySelector('.room-header-middle')&&!document.querySelector('.composer-footnote').textContent.includes('Example mode'),
         bodyFont:getComputedStyle(document.querySelector('.room-welcome p')).fontFamily,
         displayFont:getComputedStyle(document.querySelector('.room-welcome h1')).fontFamily,
-        fontLoaded:document.fonts.check('14px "SUSE Mono"'),
+        fontLoaded:document.fonts.check('16px system-ui'),
         scroll:conversation.scrollTop,overflowBy:conversation.scrollHeight-conversation.clientHeight
       };
     })()`);
@@ -309,6 +309,10 @@ try {
   const mission = await evaluate(
     `({phase:document.querySelector('.crew-scene-room').dataset.phase,leads:document.querySelectorAll('.conversation-results .lead-entry').length,review:document.querySelector('.conversation-messages').textContent.includes('withdrawn'),exampleLabel:document.querySelector('.results-note').textContent.includes('FICTIONAL')})`,
   );
+  const compactAnswer = await evaluate("!document.querySelector('.crew-activity').open&&!!document.querySelector('[aria-label=\"Copy answer\"]')&&getComputedStyle(document.querySelector('.exchange-brief')).borderLeftWidth==='0px'");
+  await screenshot("53-clean-conversation-answer");
+  await click(".crew-activity > summary");
+  await wait(150);
   const exchange = await evaluate(`(()=>{
     const nodes=[...document.querySelectorAll('.agent-contribution')];
     const rects=nodes.map(node=>node.getBoundingClientRect());
@@ -383,6 +387,8 @@ try {
   const saved = await evaluate(
     "document.querySelectorAll('.saved-leads .lead-entry').length",
   );
+  const savedReadability = await evaluate("({color:getComputedStyle(document.querySelector('.saved-leads .lead-one-line')).color,font:getComputedStyle(document.querySelector('.saved-leads .lead-one-line')).fontSize})");
+  await screenshot("54-readable-saved-opportunities");
   await send("Input.dispatchKeyEvent", {
     type: "keyDown",
     key: "Escape",
@@ -449,6 +455,8 @@ try {
     "(()=>{const feed=document.querySelector('.room-conversation');const exchange=document.querySelector('.crew-exchange');feed.scrollTo({top:feed.scrollTop+exchange.getBoundingClientRect().top-feed.getBoundingClientRect().top-16,behavior:'instant'})})()",
   );
   await wait(200);
+  await evaluate("(()=>{const details=document.querySelector('.crew-activity');if(!details.open)details.querySelector('summary').click()})()");
+  await wait(150);
   const mobileExchange = await evaluate(
     `(()=>{const map=document.querySelector('.collaboration-map').getBoundingClientRect();return {agents:document.querySelectorAll('.agent-contribution').length,overflow:document.documentElement.scrollWidth>innerWidth,nodesFit:[...document.querySelectorAll('.agent-contribution')].every(n=>{const r=n.getBoundingClientRect();return r.left>=map.left-1&&r.right<=map.right+1})}})()`,
   );
@@ -641,6 +649,8 @@ try {
     paused,
     mission,
     exchange,
+    compactAnswer,
+    savedReadability,
     reviewedOthers,
     mobileExchange,
     evidence,
@@ -687,7 +697,8 @@ try {
         fit.labelClearance < 20 ||
         !fit.quietWelcome ||
         !fit.fontLoaded ||
-        !fit.bodyFont.includes("SUSE Mono") ||
+        !fit.bodyFont.includes("sans-serif") ||
+        fit.bodyFont.includes("Mono") ||
         !fit.displayFont.includes("Departure"),
     ) ||
     !introduced ||
@@ -699,6 +710,9 @@ try {
     !mission.review ||
     !mission.exampleLabel ||
     exchange.rounds !== 1 ||
+    !compactAnswer ||
+    savedReadability.color !== "rgb(237, 240, 245)" ||
+    savedReadability.font !== "16px" ||
     exchange.agents !== 5 ||
     exchange.branches !== 5 ||
     exchange.distinctVoices !== 5 ||
