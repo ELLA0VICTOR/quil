@@ -60,4 +60,6 @@ Mozaik already runs Quil's agents. Cloud adds a hosted trace view. This pinned c
 
 Sign in at `https://app.jigjoy.ai`, then run **`npm run cloud:pair`** locally and approve the device. Set `QUIL_ENABLE_MOZAIK_CLOUD=true` and restart the API. Run the free example to obtain the trace link in the terminal. For the deployed server, use a private `MOZAIK_API_KEY` in Vercel and enable the flag there; locally paired machine credentials are not deployed automatically.
 
-Cloud export remains **off and unpaired** until you enable it. It is optional under the track requirements supplied so far; check any new submission fields when they are available. The [official SDK documentation](https://www.npmjs.com/package/@mozaik-ai/cloud-sdk) describes pairing and redaction.
+Cloud export is disabled by default for a new installation. It is optional under the track requirements supplied so far; check any new submission fields when they are available. The [official SDK documentation](https://www.npmjs.com/package/@mozaik-ai/cloud-sdk) describes pairing and redaction.
+
+The developer paired this machine on 30 October and verified a complete free fixture trace: Cloud accepted 74 events from all five agents with no rejections. Local tracing is enabled. The ignored `.env.mozaik.local` contains only the Cloud project key and enable flag for importing into Vercel's **Production** environment. Replace the existing false flag and redeploy to enable hosted traces. Keep that file private; machine pairing alone does not configure Vercel.

@@ -10,7 +10,7 @@ The developer chose to deploy the app themselves on Vercel and requested free ho
 - The local app now uses Neon. An actual one-business research mission completed using real Mozaik, Serper's cached sources and OpenAI: one supported opportunity and an editable draft/offer. This check added **3 model calls, estimated at $0.00056775**, and no new Serper requests. It did not send outreach.
 - A real Calendar read succeeded using the migrated connection. Its expired access token was refreshed successfully without altering the expiration for the test.
 - After the developer approved the exact recipient, subject and body, one test email was sent **only to that same connected Gmail account**. Google returned its receipt; a metadata read confirmed the Inbox label. This verified the Google transport, not a business owner's identity or external deliverability. No business was contacted.
-- Offline tests cover the Cloud bridge's opt-in behavior and payload filtering. No real Mozaik Cloud account has been paired and no trace has been uploaded.
+- Offline tests cover the Cloud bridge's opt-in behavior and payload filtering. After the developer approved device pairing on 30 October, a real Cloud upload accepted 74 events from all five agents with zero rejected events. The test used a complete fixture mission with no model or search calls. Local tracing is enabled; Vercel's Cloud environment update and redeployment are the remaining hosted-export steps.
 
 ## Verification boundaries
 
