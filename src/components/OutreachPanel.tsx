@@ -9,6 +9,7 @@ import {
   meetingSlots,
 } from "../lib/outreach-api";
 import GoogleSettings from "./GoogleSettings";
+import ActionConfirmation from "./ActionConfirmation";
 import ReplyAssistant from "./ReplyAssistant";
 import { safeSourceUrl } from "../lib/run-view";
 
@@ -54,6 +55,12 @@ export default function OutreachPanel({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [preview, setPreview] = useState<OutreachAction>();
+  const [confirmation, setConfirmation] = useState<OutreachAction>();
+  const [operation, setOperation] = useState<"approve" | "sync" | "cancel">();
+  const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const acting = useRef(false);
   const panel = useRef<HTMLDivElement>(null);
   const drafts = useRef<Partial<Record<typeof kind, { subject: string; message: string }>>>({});
   const writeKind = useRef<"email" | "follow_up" | "reply">("email");
@@ -87,23 +94,43 @@ export default function OutreachPanel({
       })
       .catch((error: Error) => {
         if (alive) setError(error.message);
-      });
+      }).finally(() => { if (alive) setLoading(false); });
     return () => {
       alive = false;
     };
-  }, [prospect.runId, prospect.candidateId, prospect.fictional]);
+  }, [prospect.runId, prospect.candidateId, prospect.fictional, retry]);
   const update = (action: OutreachAction) =>
     setActions((current) => [action, ...current.filter((item) => item.id !== action.id)]);
+  const dismissConfirmation = () => {
+    setConfirmation(undefined);
+    requestAnimationFrame(() => panel.current?.querySelector<HTMLButtonElement>(
+      '.contact-sections button[aria-pressed="true"]',
+    )?.focus());
+  };
   const perform = async (id: string, operation: "approve" | "sync" | "cancel") => {
-    if (busy) return;
+    if (busy || acting.current) return;
+    acting.current = true;
     setBusy(true);
+    setOperation(operation);
     setError("");
+    setFeedback("");
     try {
       const result = await outreachAction(id, operation);
       update(result.action);
       if (result.action.state !== "prepared") setPreview(undefined);
       if (operation === "approve" && result.action.state === "sent") {
         setSection(result.action.kind === "meeting" ? "history" : "conversation");
+        setConfirmation(result.action);
+        setConfirmed(false);
+      } else if (result.action.state === "uncertain" || result.action.state === "sending") {
+        setSection("history");
+        setFeedback("Delivery is not confirmed yet. Check its status before sending again.");
+      } else if (operation === "cancel") {
+        setFeedback("Preview cancelled. Nothing was sent.");
+      } else if (operation === "sync") {
+        setFeedback(actionLabel(result.action));
+      } else if (result.action.state === "failed") {
+        setError(result.action.error || "The action could not be completed.");
       }
     } catch (error) {
       setError((error as Error).message);
@@ -117,7 +144,9 @@ export default function OutreachPanel({
         }
       }
     } finally {
+      acting.current = false;
       setBusy(false);
+      setOperation(undefined);
     }
   };
   const choose = (value: typeof kind) => {
@@ -126,6 +155,7 @@ export default function OutreachPanel({
     setKind(value);
     setSection(value === "meeting" ? "meeting" : "compose");
     setError("");
+    setFeedback("");
     const previous = drafts.current[value];
     if (previous) {
       setSubject(previous.subject);
@@ -158,6 +188,10 @@ export default function OutreachPanel({
     }
   };
   const prepare = async () => {
+    if (busy || acting.current) return;
+    const emailField = panel.current?.querySelector<HTMLInputElement>('.outreach-compose input[type="email"]');
+    if (emailField && !emailField.reportValidity()) return;
+    acting.current = true;
     setBusy(true);
     setError("");
     try {
@@ -206,6 +240,7 @@ export default function OutreachPanel({
         }
       }
     } finally {
+      acting.current = false;
       setBusy(false);
     }
   };
@@ -225,8 +260,13 @@ export default function OutreachPanel({
     );
   return (
     <div className="outreach-panel" ref={panel}>
-      {!status ? (
-        <p role="status">{error ? "Your connection could not be loaded." : "Opening your connection…"}</p>
+      {!status || loading ? (
+        <div className="contact-loading">
+          <p role="status">{error ? "Your connection could not be loaded." : "Opening your connection…"}</p>
+          {error && <button className="text-link" onClick={() => {
+            setError(""); setLoading(true); setRetry((value) => value + 1);
+          }}>Try again</button>}
+        </div>
       ) : !status.connected ? (
         <GoogleSettings />
       ) : (
@@ -245,6 +285,8 @@ export default function OutreachPanel({
             <button aria-pressed={section === "history"} disabled={busy || !!preview}
               onClick={() => setSection("history")}>Activity</button>
           </nav>
+          {error && <p className="outreach-error outreach-feedback" role="alert">{error}</p>}
+          {feedback && <p className="outreach-feedback" role="status">{feedback}</p>}
           {section === "conversation" && !actions.some((action) => action.kind === "email" && action.state === "sent") && (
             <div className="contact-empty"><p>Your conversation starts with an introduction.</p>
               <button className="text-link" onClick={() => choose("email")}>Write an introduction</button></div>
@@ -375,7 +417,7 @@ export default function OutreachPanel({
                 onClick={() => void perform(preview.id, "approve")}
               >
                 {busy
-                  ? "Checking…"
+                  ? operation === "approve" ? "Sending…" : operation === "cancel" ? "Cancelling…" : "Checking…"
                   : preview.kind === "meeting"
                     ? "Approve & send invitation"
                     : "Approve & send message"}
@@ -408,6 +450,8 @@ export default function OutreachPanel({
                 Business email
                 <input
                   type="email"
+                  required
+                  autoComplete="email"
                   value={recipient}
                   onChange={(event) => {
                     setRecipient(event.target.value);
@@ -556,6 +600,7 @@ export default function OutreachPanel({
                   busy ||
                   !confirmed ||
                   !recipient ||
+                  !subject.trim() ||
                   !message.trim() ||
                   (kind === "meeting" && !start)
                 }
@@ -563,15 +608,37 @@ export default function OutreachPanel({
               >
                 {busy ? "Preparing…" : "Prepare approval preview"}
               </button>
+              {!busy && (!recipient.trim() || !confirmed || !subject.trim() || !message.trim() || (kind === "meeting" && !start)) && (
+                <p className="compose-hint">{
+                  !recipient.trim() ? "Add the recipient’s email to continue."
+                    : !confirmed ? "Confirm the recipient’s address to continue."
+                      : !subject.trim() ? "Add a subject to continue."
+                        : !message.trim() ? "Add your message to continue."
+                          : "Choose a meeting time to continue."
+                }</p>
+              )}
             </div>
           )}
         </>
       )}
-      {error && (
+      {error && !status?.connected && (
         <p className="outreach-error" role="alert">
           {error}
         </p>
       )}
+      {confirmation && <ActionConfirmation
+        title={confirmation.kind === "meeting" ? "Invitation sent successfully" : "Email sent successfully"}
+        description={confirmation.kind === "meeting"
+          ? "Your Google Calendar invitation is on its way. You can check the attendee’s response in Activity."
+          : "Sent through your connected Gmail account. You can read replies in Conversation."}
+        recipient={confirmation.recipient}
+        subject={confirmation.subject}
+        nextLabel={confirmation.kind === "meeting" ? "View invitation" : "View conversation"}
+        onClose={dismissConfirmation}
+        onNext={() => {
+          setSection(confirmation.kind === "meeting" ? "history" : "conversation");
+          dismissConfirmation();
+        }} />}
     </div>
   );
 }

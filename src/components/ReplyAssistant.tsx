@@ -20,12 +20,15 @@ export default function ReplyAssistant({
   const [price, setPrice] = useState(""),
     [minimum, setMinimum] = useState("");
   const [delivery, setDelivery] = useState("");
+  const [preparing, setPreparing] = useState(false);
+  const [checkedAt, setCheckedAt] = useState("");
   const read = async () => {
     setBusy(true);
     setError("");
     setPlan(undefined);
     try {
       setConversation((await readConversation(rootId)).conversation);
+      setCheckedAt(new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }));
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -33,7 +36,9 @@ export default function ReplyAssistant({
     }
   };
   const prepare = async () => {
+    if (busy) return;
     setBusy(true);
+    setPreparing(true);
     setError("");
     setPlan(undefined);
     try {
@@ -46,6 +51,7 @@ export default function ReplyAssistant({
       setError((error as Error).message);
     } finally {
       setBusy(false);
+      setPreparing(false);
     }
   };
   return (
@@ -56,6 +62,8 @@ export default function ReplyAssistant({
           {busy ? "Checking…" : conversation ? "Refresh replies" : "Read conversation"}
         </button>
       </div>
+      {!conversation && !busy && <p>Read the latest messages in this email thread.</p>}
+      {checkedAt && <p className="reply-checked" role="status">Last checked at {checkedAt}.</p>}
       {conversation && (
         <>
           <div className="reply-messages">
@@ -150,7 +158,7 @@ export default function ReplyAssistant({
                 disabled={busy || !!conversation.latestIncoming?.truncated}
                 onClick={() => void prepare()}
               >
-                Prepare a response
+                {preparing ? "Preparing a response…" : "Prepare a response"}
               </button>
             </>
           )}

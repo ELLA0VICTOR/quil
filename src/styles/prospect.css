@@ -108,6 +108,64 @@
   font-size: 14px;
 }
 .prospect-dialog .outreach-history > div { padding: 14px 0; border-bottom: 1px solid #ffffff1c; }
+.outreach-feedback {
+  margin: 14px 0 !important;
+  padding: 10px 14px;
+  border-left: 2px solid #adc9eb;
+  background: #ffffff05;
+  color: #e4eaf3;
+  font-size: 14px;
+}
+.outreach-error.outreach-feedback { border-color: #e5a39b; color: #ffd3cd; }
+.compose-hint { color: #c0cada; font-size: 13px; margin: 8px 0 0 !important; }
+.reply-checked { color: #adbbce; font-size: 12px; }
+.action-confirmation {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100svh - 32px);
+  margin: auto;
+  padding: 30px;
+  border: 1px solid #ffffff25;
+  border-radius: 20px;
+  background: #101925;
+  color: #f5f7fb;
+  box-shadow: 0 20px 90px #0009;
+  font-family: var(--body);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.action-confirmation::backdrop { background: #02060cb8; backdrop-filter: blur(5px); }
+.confirmation-close { position: absolute; top: 12px; right: 12px; }
+.confirmation-check {
+  display: grid;
+  place-items: center;
+  height: 58px;
+  width: 58px;
+  border-radius: 50%;
+  background: #8ed7b714;
+  border: 1px solid #a0e7c640;
+  color: #a5edca;
+  margin-bottom: 20px;
+}
+.action-confirmation h2 { font: 600 21px/1.4 var(--body); margin: 0; }
+.action-confirmation p { color: #cad4e2; font-size: 15px; line-height: 1.65; margin-top: 12px; }
+.action-confirmation dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 14px;
+  margin: 22px 0;
+  padding-block: 16px;
+  border-block: 1px solid #ffffff1c;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.action-confirmation dt { color: #aebdd0; }
+.action-confirmation dd { margin: 0; overflow-wrap: anywhere; }
+.confirmation-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 20px; }
+.confirmation-actions .button { font-size: 14px; padding-inline: 18px; }
+@media (max-width: 460px) {
+  .action-confirmation { padding: 26px 22px; }
+  .action-confirmation h2 { font-size: 19px; }
+}
 @media (max-width: 600px) {
   .prospect-dialog {
     width: calc(100vw - 16px);
