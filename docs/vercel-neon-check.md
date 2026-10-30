@@ -14,7 +14,9 @@ The developer chose to deploy the app themselves on Vercel and requested free ho
 
 ## Verification boundaries
 
-The Vercel function entry point, duration configuration, background lifetime registration and automatic production-domain configuration are prepared. They have not been exercised on a deployed Vercel URL. The final production routing, platform runtime and Google callback-domain checks must follow the developer's deployment.
+The owner deployed to `https://quil-xx.vercel.app`. The landing page and privacy notice returned HTTP 200. `/api/health` confirmed live mode, PostgreSQL and configured model/search credentials. `/api/session` returned the correct production sign-in callback; a cookie-bearing request retained the guest account.
+
+Two explicitly fictional smoke missions completed in Neon through the deployed worker, without provider calls or outreach. The browser could not retrieve their results: Vercel returned its own non-JSON 404 for nested `/api/runs/<id>` and event URLs. The function filename alone did not route multiple path segments. An explicit `/api/:path*` rewrite to `/api/[...path]` is now prepared in `vercel.json`; the production build passed. The owner must push this routing fix and let Vercel rebuild before the deployed browser/SSE/reload and Google callback checks can pass. No deployment or push was performed by Codex.
 
 Real meeting invitation creation and another attendee's acceptance remain unverified. Their adapters, approval protections and connected screens have injected-provider coverage. Google Testing audience restrictions are separate from account isolation and hosting.
 

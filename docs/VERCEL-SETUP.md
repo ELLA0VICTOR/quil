@@ -5,6 +5,7 @@ The frontend and API are prepared for one Vercel project. Neon provides durable 
 ## What is already prepared
 
 - `vercel.json` selects Vite, builds `dist`, and gives the single API function a 180-second limit. Agent missions retain their 120-second deadline. Vercel keeps work alive using `waitUntil`; a stopped worker is marked failed after its deadline, without replaying paid calls.
+- An explicit `/api/:path*` rewrite routes nested URLs to the single API function. The deployed smoke check found that the function filename alone handled `/api/health` but returned platform 404s for nested run/event and Google callback URLs. Keep this rewrite when updating the deployment.
 - Accounts, OAuth handoffs, runs, event replay, controls, saved prospects, encrypted Google connections and approvals use Neon. Budget reservations and per-account run admission are transactionally serialized across instances.
 - A private **`.env.vercel.local`** file contains the prepared server environment for this developer's deployment. It is ignored by Git. It must never be committed, pasted into chat, included in screenshots or prefixed with `VITE_`.
 - The local app now uses the same Neon database. Its existing account, research, encrypted Google connection and spending ledger were migrated; the SQLite source remains intact. Local and deployed research will share the same ledger and caps.

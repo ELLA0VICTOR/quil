@@ -4,6 +4,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "regions": ["cle1"],
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/[...path]" }
+  ],
   "functions": {
     "api/**/*.ts": { "maxDuration": 180, "includeFiles": "node_modules/@mozaik-ai/core/node_modules/@mozaik-ai/cloud-sdk/**" }
   }
