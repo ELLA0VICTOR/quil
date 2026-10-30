@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import { readConfig } from "../server/config.ts";
 import { createApi } from "../server/http.ts";
+import { randomBytes } from "node:crypto";
+import { hashToken } from "../server/store.ts";
 
 // A separate fixture API and preview leave the owner's live environment and
 // ledger untouched. This command cannot make provider requests.
@@ -10,6 +12,14 @@ const api = createApi({
     QUIL_API_PORT: "8788",
   }),
   allowedOrigins: new Set(["http://127.0.0.1:4174"]),
+});
+// Only this isolated fixture database gets these synthetic signed-in sessions.
+// Production authentication has no test endpoint or bypass.
+const testAccounts = ["alice", "bob"].map((name) => {
+  const id = `browser-${name}`, token = randomBytes(32).toString("hex");
+  api.store.db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run(id, `fixture-${name}`, `${name}@example.test`, name, new Date().toISOString());
+  api.store.db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token), id, Date.now() + 3600_000);
+  return { id, token };
 });
 await new Promise((resolve, reject) => {
   api.server.once("error", reject);
@@ -68,7 +78,7 @@ try {
   check = spawn(process.execPath, ["scripts/browser-qa.mjs"], {
     stdio: "inherit",
     windowsHide: true,
-    env: { ...process.env, QUIL_QA_URL: "http://127.0.0.1:4174" },
+    env: { ...process.env, QUIL_QA_URL: "http://127.0.0.1:4174", QUIL_QA_ACCOUNTS: JSON.stringify(testAccounts) },
   });
   const code = await new Promise((resolve, reject) => {
     check.once("error", reject);

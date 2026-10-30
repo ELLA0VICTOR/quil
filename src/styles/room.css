@@ -542,6 +542,10 @@
   color: #b5c6dc;
   cursor: pointer;
 }
+.room-account-button { border: 0; background: transparent; color: #c8d7ea; font: inherit; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; padding: 8px; }
+.account-content { padding-top: 24px; line-height: 1.9; font-size: 14px; }
+.account-content p { margin: 16px 0; }
+.account-opening { min-height: 100svh; display: grid; place-content: center; gap: 20px; color: #dbe7f8; padding: 30px; text-align: center; }
 .room-connect-button:hover {
   color: white;
 }

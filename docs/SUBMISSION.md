@@ -13,7 +13,7 @@ The five roles run through `@mozaik-ai/core@4.2.0-beta.18`: runtime participants
 1. Install Node.js 24+, then run `npm install` and `npm run dev:all`.
 2. Open the local URL and select **Try now → Or try a little example**. No key or credits are required. The example clearly labels its fictional businesses; its Mozaik coordination is real.
 3. Open **See the evidence** and **Introduction**, edit the draft, save it, then check **Saved**. Pause, resume or cancel another run. Refreshing reconnects rather than submitting another search.
-4. For live research, copy `.env.example` to `.env`, add your own OpenAI and Serper keys, and enable both live switches. Restart the API. Say: “I build booking websites. Find hairdressers in Manchester.” Live searches may correctly return no supported opportunity.
+4. For live research, copy `.env.example` to `.env`, add your own OpenAI and Serper keys, and enable both live switches. Configure the separate [account sign-in client](ACCOUNTS.md), restart the API and sign into Quil. Say: “I build booking websites. Find hairdressers in Manchester.” Live searches may correctly return no supported opportunity.
 
 ## What to inspect
 
@@ -30,8 +30,8 @@ Quil currently supports website and booking-flow prospecting, with up to three b
 
 The approved-introduction path is covered end to end by injected-provider tests and a recorded live-provider run using real cached discovery/research records and a new writing request. A browser verified the final answer, editable introduction and source link. Fresh live research/review overlap, exclusions and conflicting booking evidence are recorded separately. This proves a source-backed introduction, not customer demand or a sales result; fictional examples are labeled explicitly.
 
-Live requests have persistent, transactionally reserved cost limits. No automatic paid retries are performed. A free example remains available on a live-configured server. Keys and private run tokens stay outside the repository and browser bundle. Public multi-user hosting would require user authentication and per-user quotas; this submission is designed to run locally from the public source.
+Live requests have persistent, transactionally reserved cost limits. No automatic paid retries are performed. A free example remains available on a live-configured server. Keys and private run tokens stay outside the repository and browser bundle. User authentication, per-account data/credential isolation and daily quotas are implemented; [account setup](ACCOUNTS.md) explains the two OAuth clients. Public hosting remains unperformed and requires HTTPS callbacks plus the appropriate Google audience/verification status. The entry can run locally from the public source.
 
 MIT licensed. No video or public hosting is required for this track. No customer adoption, revenue or measured sales uplift is claimed.
 
-Optional outreach now has a [Google setup guide](GOOGLE-SETUP.md). Its adapters are tested with injected Google responses and the connected screens with mocked browser responses; live Google authorization and an approved test send remain pending. The free example demonstrates the editable offer and follow-up plan without needing a Google account.
+Optional outreach has a [Google setup guide](GOOGLE-SETUP.md). Live Google authorization and read-only Calendar access were verified on 30 October: the API returned three suggested meeting times. Gmail delivery and real invitations remain unverified; their adapters and connected screens have injected-provider and mocked-browser coverage. The free example demonstrates the editable offer and follow-up plan without needing a Google account. See the [verification record](outreach-check.md).

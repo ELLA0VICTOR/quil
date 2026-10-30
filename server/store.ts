@@ -22,6 +22,14 @@ export class Store {
       CREATE TABLE IF NOT EXISTS server_lease (id INTEGER PRIMARY KEY CHECK(id=1), pid INTEGER NOT NULL, owner TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS integrations (name TEXT PRIMARY KEY, secret TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS outreach (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, candidate_id TEXT NOT NULL, state TEXT NOT NULL, record TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, google_sub TEXT UNIQUE, email TEXT, name TEXT, created_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires INTEGER NOT NULL);
+      CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+      CREATE TABLE IF NOT EXISTS run_owners (run_id TEXT PRIMARY KEY, user_id TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS run_owner_user ON run_owners(user_id);
+      CREATE TABLE IF NOT EXISTS outreach_owners (action_id TEXT PRIMARY KEY, user_id TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS saved_prospects (user_id TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS charge_times (charge_id TEXT PRIMARY KEY, at TEXT NOT NULL);
     `);
   }
   claimServer() {
@@ -51,21 +59,26 @@ export class Store {
       throw error;
     }
   }
-  createRun(run: RunSnapshot, token: string) {
+  createRun(run: RunSnapshot, token: string, userId?: string) {
     this.db
       .prepare("INSERT INTO runs VALUES (?,?,?)")
       .run(run.id, hashToken(token), JSON.stringify(run));
+    if (userId) this.db.prepare("INSERT INTO run_owners VALUES(?,?)").run(run.id, userId);
   }
   saveRun(run: RunSnapshot) {
     this.db
       .prepare("UPDATE runs SET snapshot=? WHERE id=?")
       .run(JSON.stringify(run), run.id);
   }
-  run(id: string, token: string): RunSnapshot | undefined {
+  run(id: string, token: string, userId?: string): RunSnapshot | undefined {
+    if (userId && !this.ownsRun(id, userId)) return;
     const row = this.db
       .prepare("SELECT snapshot FROM runs WHERE id=? AND token_hash=?")
       .get(id, hashToken(token)) as { snapshot: string } | undefined;
     return row ? JSON.parse(row.snapshot) : undefined;
+  }
+  ownsRun(id: string, userId: string): boolean {
+    return !!this.db.prepare("SELECT 1 FROM run_owners WHERE run_id=? AND user_id=?").get(id, userId);
   }
   append(
     runId: string,
@@ -138,11 +151,17 @@ export class Store {
           : total.calls >= config.searchTotal ||
             run.calls >= config.searchPerRun;
       if (blocked) throw Error(`${provider} usage limit reached`);
+      const owner = this.db.prepare("SELECT user_id FROM run_owners WHERE run_id=?").get(runId) as { user_id: string } | undefined;
+      if (owner) {
+        const daily = this.db.prepare("SELECT COALESCE(SUM(c.charged),0) cost,COUNT(*) calls FROM charges c JOIN run_owners o ON o.run_id=c.run_id JOIN charge_times t ON t.charge_id=c.id WHERE o.user_id=? AND c.provider=? AND t.at>=?").get(owner.user_id, provider, new Date(Date.now() - 86400_000).toISOString()) as { cost: number; calls: number };
+        if (provider === "openai" ? daily.cost + amount > config.userDailyBudget : daily.calls >= config.userDailySearch) throw Error(`${provider} daily allowance reached for this account`);
+      }
       const id = randomUUID();
       // A crash or ambiguous network failure retains the whole reservation.
       this.db
         .prepare("INSERT INTO charges VALUES(?,?,?,?,?,?)")
         .run(id, runId, provider, amount, amount, "reserved");
+      this.db.prepare("INSERT INTO charge_times VALUES(?,?)").run(id, new Date().toISOString());
       this.db.exec("COMMIT");
       return id;
     } catch (error) {

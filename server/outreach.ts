@@ -36,6 +36,7 @@ export class OutreachService {
     private store: Store,
     private google: GoogleConnection,
     private now = () => Date.now(),
+    readonly userId = google.userId,
   ) {}
   private persist(action: OutreachAction) {
     this.store.db
@@ -47,12 +48,13 @@ export class OutreachService {
         action.state,
         JSON.stringify(action),
       );
+    this.store.db.prepare("INSERT OR REPLACE INTO outreach_owners VALUES(?,?)").run(action.id, this.userId);
     return action;
   }
   get(id: string): OutreachAction {
     const row = this.store.db
-      .prepare("SELECT record FROM outreach WHERE id=?")
-      .get(id) as { record: string } | undefined;
+      .prepare("SELECT a.record FROM outreach a JOIN outreach_owners o ON o.action_id=a.id WHERE a.id=? AND o.user_id=?")
+      .get(id, this.userId) as { record: string } | undefined;
     if (!row) throw new ActionError(404, "Outreach item not found.");
     return JSON.parse(row.record);
   }
@@ -60,12 +62,13 @@ export class OutreachService {
     return (
       this.store.db
         .prepare(
-          "SELECT record FROM outreach WHERE run_id=? AND candidate_id=? ORDER BY rowid DESC LIMIT 30",
+          "SELECT a.record FROM outreach a JOIN outreach_owners o ON o.action_id=a.id WHERE a.run_id=? AND a.candidate_id=? AND o.user_id=? ORDER BY a.rowid DESC LIMIT 30",
         )
-        .all(runId, candidateId) as { record: string }[]
+        .all(runId, candidateId, this.userId) as { record: string }[]
     ).map((row) => JSON.parse(row.record));
   }
   private lead(runId: string, candidateId: string) {
+    if (!this.store.ownsRun(runId, this.userId)) throw new ActionError(404, "Opportunity not found in this account.");
     const row = this.store.db
       .prepare("SELECT snapshot FROM runs WHERE id=?")
       .get(runId) as { snapshot: string } | undefined;
@@ -561,8 +564,8 @@ export class OutreachService {
   }
   recover() {
     const rows = this.store.db
-      .prepare("SELECT record FROM outreach WHERE state='sending'")
-      .all() as { record: string }[];
+      .prepare("SELECT a.record FROM outreach a JOIN outreach_owners o ON o.action_id=a.id WHERE a.state='sending' AND o.user_id=?")
+      .all(this.userId) as { record: string }[];
     for (const row of rows) {
       const action: OutreachAction = JSON.parse(row.record);
       action.state = "uncertain";

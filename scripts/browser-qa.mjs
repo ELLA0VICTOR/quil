@@ -184,6 +184,9 @@ try {
   );
   await wait(100);
   await screenshot("14-footer");
+  const qaUserId = await evaluate("fetch('/api/session').then(r=>r.json()).then(r=>r.user.id)");
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: `window.__quilQaUserId=${JSON.stringify(qaUserId)}` });
+  await evaluate(`window.__quilQaUserId=${JSON.stringify(qaUserId)}`);
   await click(".header-cta");
   await wait(350);
   const room = await evaluate(
@@ -303,7 +306,7 @@ try {
     await wait(60);
   }
   const serverVerified = await evaluate(
-    `(async()=>{const saved=JSON.parse(sessionStorage.getItem('quil:active-run'));const response=await fetch('/api/runs/'+saved.run.id,{headers:{Authorization:'Bearer '+saved.accessToken}});const {run,usage}=await response.json();return run.status==='completed'&&run.mode==='fixture'&&usage.length===0&&document.querySelector('.answer-prose p').textContent===run.outcome.text&&document.querySelector('.crew-exchange').dataset.missionId===run.id})()`,
+    `(async()=>{const saved=JSON.parse(sessionStorage.getItem('quil:'+window.__quilQaUserId+':active-run'));const response=await fetch('/api/runs/'+saved.run.id,{headers:{Authorization:'Bearer '+saved.accessToken}});const {run,usage}=await response.json();return run.status==='completed'&&run.mode==='fixture'&&usage.length===0&&document.querySelector('.answer-prose p').textContent===run.outcome.text&&document.querySelector('.crew-exchange').dataset.missionId===run.id})()`,
   );
   const mission = await evaluate(
     `({phase:document.querySelector('.crew-scene-room').dataset.phase,leads:document.querySelectorAll('.conversation-results .lead-entry').length,review:document.querySelector('.conversation-messages').textContent.includes('withdrawn'),exampleLabel:document.querySelector('.results-note').textContent.includes('FICTIONAL')})`,
@@ -356,7 +359,7 @@ try {
   );
   await send("Input.insertText", { text: "\n\nA short outline is available." });
   const savedDraftUpdated = await evaluate(
-    "JSON.parse(localStorage.getItem('quil:saved:v2'))[0].draft.includes('A short outline is available.')",
+    "JSON.parse(localStorage.getItem('quil:'+window.__quilQaUserId+':saved:v3'))[0].draft.includes('A short outline is available.')",
   );
   await evaluate(
     "[...document.querySelectorAll('.lead-entry-links button')].find(button=>button.textContent.includes('Tailored offer')).click()",
@@ -369,7 +372,7 @@ try {
   );
   await send("Input.insertText", { text: "\n\nScope reviewed by me." });
   const savedOfferUpdated = await evaluate(
-    "JSON.parse(localStorage.getItem('quil:saved:v2'))[0].offer.includes('Scope reviewed by me.')",
+    "JSON.parse(localStorage.getItem('quil:'+window.__quilQaUserId+':saved:v3'))[0].offer.includes('Scope reviewed by me.')",
   );
   await screenshot("64-editable-tailored-offer");
   await evaluate(
@@ -423,7 +426,7 @@ try {
     await wait(40);
   }
   const googleSetupHonest = await evaluate(
-    "document.querySelector('.google-setup')?.textContent.includes('GOOGLE_CLIENT_ID')&&document.querySelector('.google-settings .button').disabled",
+    "document.querySelector('.google-setup')?.textContent.includes('docs/ACCOUNTS.md')&&document.querySelector('.account-content .button').disabled",
   );
   await screenshot("65-google-connection-setup");
   await click(".side-sheet .icon-button");
@@ -525,6 +528,37 @@ try {
   const mobileMenu = await evaluate(
     "document.querySelector('.mobile-menu-button').getAttribute('aria-expanded')==='true'",
   );
+  let accountIsolation = null;
+  if (process.env.QUIL_QA_ACCOUNTS) {
+    const [alice, bob] = JSON.parse(process.env.QUIL_QA_ACCOUNTS);
+    const enterAccount = async (account) => {
+      await send("Network.setCookie", { name: "quil_session", value: account.token, url: qaBase, path: "/", httpOnly: true, sameSite: "Lax" });
+      await send("Page.navigate", { url: qaBase + "/#/workspace" });
+      // A fragment-only navigation retains the old React tree. Simulate a fresh
+      // signed-in page load after replacing this fixture's HTTP-only cookie.
+      await send("Page.reload"); await wait(120);
+      const email = account.id.replace("browser-", "") + "@example.test";
+      for (let i=0;i<80;i++) { if (await evaluate(`document.querySelector('.room-account-button')?.title===${JSON.stringify(email)}`)) return; await wait(50); }
+      throw Error("The fixture account did not open in the browser");
+    };
+    await enterAccount(alice);
+    const startsEmpty = await evaluate("!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')");
+    await type("Find cleaning businesses in Manchester that need a website."); await click(".composer-send");
+    for (let i=0;i<120;i++) { if(await evaluate("document.querySelector('.crew-exchange')?.dataset.status==='completed'"))break;await wait(50); }
+    await click(".lead-entry .lead-save");
+    for (let i=0;i<50;i++) { if(await evaluate("fetch('/api/me/saved').then(r=>r.json()).then(r=>r.saved.length===1)"))break;await wait(50); }
+    const aliceSaved = await evaluate("(async()=> (await (await fetch('/api/me/saved')).json()).saved.length===1&&localStorage.getItem('quil:browser-alice:saved:v3')!==null)()");
+    await enterAccount(bob);
+    const bobEmpty = await evaluate("!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')&&fetch('/api/me/saved').then(r=>r.json()).then(r=>r.saved.length===0)");
+    await enterAccount(alice);
+    for(let i=0;i<50;i++){if(await evaluate("document.querySelector('.room-saved-button').textContent.includes('1')"))break;await wait(50);}
+    const aliceRestored = await evaluate("document.querySelector('.room-saved-button').textContent.includes('1')");
+    await click(".room-account-button"); await click(".account-content .text-link");
+    for(let i=0;i<50;i++){if(await evaluate("!!document.querySelector('.room-account-button[aria-label=\"Sign in to Quil\"]')"))break;await wait(50);}
+    const signedOutClean = await evaluate("!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')&&Object.keys(localStorage).every(k=>!k.startsWith('quil:browser-alice:'))&&Object.keys(sessionStorage).every(k=>!k.startsWith('quil:browser-alice:'))");
+    accountIsolation = { startsEmpty, aliceSaved, bobEmpty, aliceRestored, signedOutClean };
+    if (Object.values(accountIsolation).some(value => value !== true)) throw Error("Browser account isolation failed: " + JSON.stringify(accountIsolation));
+  }
   const report = {
     desktop,
     autoMorph,
@@ -559,6 +593,7 @@ try {
     savedSurvivesReset,
     mobileLandingOverflow,
     mobileMenu,
+    accountIsolation,
     errors: [...new Set(errors)],
   };
   await writeFile(

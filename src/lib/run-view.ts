@@ -235,10 +235,10 @@ export function safeSourceUrl(value: string): string | undefined {
     return;
   }
 }
-export function readSaved(): Prospect[] {
+export function readSaved(key: string): Prospect[] {
   try {
     const value: unknown = JSON.parse(
-      localStorage.getItem("quil:saved:v2") ?? "[]",
+      localStorage.getItem(key) ?? "[]",
     );
     if (!Array.isArray(value)) return [];
     return value.slice(0, 30).filter((p): p is Prospect => {

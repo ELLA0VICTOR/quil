@@ -16,7 +16,8 @@ const response = await fetch(base + "/api/runs", {
 if (!response.ok)
   throw Error(`Could not start demonstration (${response.status})`);
 const created = (await response.json()) as CreatedRun;
-const stream = await fetch(base + created.eventsUrl);
+const cookie = response.headers.get("set-cookie")?.split(";")[0];
+const stream = await fetch(base + created.eventsUrl, { headers: cookie ? { Cookie: cookie } : {} });
 if (!stream.ok) throw Error(`Could not open event stream (${stream.status})`);
 const events = (await stream.text()).split("\n\n").flatMap((block) => {
   const line = block.split("\n").find((line) => line.startsWith("data: "));

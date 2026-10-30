@@ -1,8 +1,10 @@
 import type { GoogleStatus, OutreachAction } from "../../shared/outreach.ts";
+import { workspaceHeaders } from "./session-api";
 
 async function request<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch(path, {
     credentials: "same-origin",
+    headers: workspaceHeaders(),
     ...(body === undefined
       ? {}
       : {
@@ -10,6 +12,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
           headers: {
             "Content-Type": "application/json",
             "X-Quil-Action": "review",
+              ...workspaceHeaders(),
           },
           body: JSON.stringify(body),
         }),

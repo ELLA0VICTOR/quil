@@ -8,24 +8,35 @@ import CrewExchange from "../components/CrewExchange";
 import ProspectEntry from "../components/ProspectEntry";
 import { crew } from "../data/crew";
 import type { AgentId } from "../data/crew";
-import { phaseFor, prospectsFor, readSaved } from "../lib/run-view";
+import { phaseFor, prospectsFor } from "../lib/run-view";
 import type { MissionView, Prospect } from "../lib/run-view";
 import { useCrewRuns } from "../hooks/useCrewRuns";
 import { prepareRun } from "../lib/api";
 import type { PreparedBrief } from "../../shared/mission";
 import { followUp } from "../lib/follow-up";
 import GoogleSettings from "../components/GoogleSettings";
+import { useAccount } from "../hooks/useAccount";
+import { useSavedProspects } from "../hooks/useSavedProspects";
 
 const exampleRequest =
   "Find cleaning businesses in Manchester that could use a simpler booking website.";
+function pendingBrief(userId: string): PreparedBrief | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(`quil:${userId}:pending-brief`) || "null");
+    return typeof value?.brief?.request === "string" && value.brief.request.length <= 2000 ? value : null;
+  } catch { return null; }
+}
 export default function CrewRoom({ goHome }: { goHome: () => void }) {
-  const session = useCrewRuns();
-  const [input, setInput] = useState(""),
+  const account = useAccount();
+  const userId = account.session!.user.id;
+  const session = useCrewRuns(`quil:${userId}:active-run`);
+  const [restoredBrief] = useState(() => pendingBrief(userId));
+  const [input, setInput] = useState(restoredBrief?.brief?.request || ""),
     [panel, setPanel] = useState<"saved" | "about" | "google" | null>(null),
     [toast, setToast] = useState(""),
     [introducing, setIntroducing] = useState(false);
-  const [saved, setSaved] = useState<Prospect[]>(readSaved);
-  const [pending, setPending] = useState<PreparedBrief | null>(null),
+  const [saved, setSaved, savedError] = useSavedProspects(userId);
+  const [pending, setPending] = useState<PreparedBrief | null>(restoredBrief),
     [preparing, setPreparing] = useState(false),
     [requestError, setRequestError] = useState("");
   const prepareVersion = useRef(0);
@@ -44,13 +55,6 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     session.lastMission?.status === "queued";
   const paused = session.lastMission?.status === "paused";
   const hasMission = session.items.some((item) => item.kind === "mission");
-  useEffect(() => {
-    try {
-      localStorage.setItem("quil:saved:v2", JSON.stringify(saved));
-    } catch {
-      /* Quota/private-mode errors must not break the conversation. */
-    }
-  }, [saved]);
   useEffect(
     () => () => {
       clearTimeout(toastTimer.current);
@@ -150,7 +154,13 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         );
         setPending(prepared);
       } else {
+        if (!account.session!.user.authenticated && account.session!.mode === "live") {
+          setPending(prepared); setInput(request);
+          try { sessionStorage.setItem(`quil:${userId}:pending-brief`, JSON.stringify(prepared)); } catch {}
+          account.openAccount(); return;
+        }
         setPending(null);
+        try { sessionStorage.removeItem(`quil:${userId}:pending-brief`); } catch {}
         await session.start(prepared.brief.request, prepared.brief);
       }
     } catch (error) {
@@ -354,9 +364,10 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
             <Icon name="bookmark" size={17} />
             <span>Saved{saved.length > 0 && <i>{saved.length}</i>}</span>
           </button>
+          <button className="room-account-button" onClick={account.openAccount} aria-label={account.session!.user.authenticated ? "Your Quil account" : "Sign in to Quil"} title={account.session!.user.email || "Sign in"}>{account.session!.user.authenticated ? <Icon name="settings" size={18} /> : "Sign in"}</button>
           <button
             className="room-connect-button"
-            onClick={() => setPanel("google")}
+            onClick={() => account.session!.user.authenticated ? setPanel("google") : account.openAccount()}
             aria-label="Gmail and Calendar connection"
             title="Gmail & Calendar"
           >
@@ -627,8 +638,8 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
                 </div>
               )}
               <p className="sheet-footnote">
-                Saved in this browser. Example entries contain fictional
-                records.
+                {account.session!.user.authenticated ? "Saved privately to your Quil account." : "Saved in this private example workspace. Sign in to keep it across devices."} Example entries contain fictional records.
+                {savedError && <span role="status"> {savedError}</span>}
               </p>
             </>
           ) : (

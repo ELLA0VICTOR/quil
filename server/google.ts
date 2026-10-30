@@ -42,6 +42,7 @@ export class GoogleConnection {
     private config: Config,
     private store: Store,
     private fetcher: typeof fetch = fetch,
+    readonly userId = "internal-test",
   ) {}
   private key() {
     const path = join(this.config.dataDir, "google-token.key");
@@ -54,14 +55,16 @@ export class GoogleConnection {
   }
   private load(): Tokens | undefined {
     const row = this.store.db
-      .prepare("SELECT secret FROM integrations WHERE name='google'")
-      .get() as { secret: string } | undefined;
+      .prepare("SELECT secret FROM integrations WHERE name=?")
+      .get(`google:${this.userId}`) as { secret: string } | undefined;
     if (!row) return;
     try {
-      const [iv, tag, encrypted] = row.secret
+      const encoded = row.secret.startsWith("v2.") ? row.secret.slice(3) : row.secret;
+      const [iv, tag, encrypted] = encoded
         .split(".")
         .map((part) => Buffer.from(part, "base64"));
       const decipher = createDecipheriv("aes-256-gcm", this.key(), iv);
+      if (row.secret.startsWith("v2.")) decipher.setAAD(Buffer.from(this.userId));
       decipher.setAuthTag(tag);
       return JSON.parse(
         Buffer.concat([decipher.update(encrypted), decipher.final()]).toString(
@@ -78,17 +81,37 @@ export class GoogleConnection {
   private save(tokens: Tokens) {
     const iv = randomBytes(12),
       cipher = createCipheriv("aes-256-gcm", this.key(), iv);
+    cipher.setAAD(Buffer.from(this.userId));
     const encrypted = Buffer.concat([
       cipher.update(JSON.stringify(tokens)),
       cipher.final(),
     ]);
     this.store.db
-      .prepare("INSERT OR REPLACE INTO integrations VALUES('google',?)")
+      .prepare("INSERT OR REPLACE INTO integrations VALUES(?,?)")
       .run(
-        [iv, cipher.getAuthTag(), encrypted]
+        `google:${this.userId}`,
+        "v2." + [iv, cipher.getAuthTag(), encrypted]
           .map((part) => part.toString("base64"))
           .join("."),
       );
+  }
+  ownsState(state: string) { return this.pending.has(state); }
+  adoptLegacy(verifiedEmail: string) {
+    const row = this.store.db.prepare("SELECT secret FROM integrations WHERE name='google'").get() as { secret: string } | undefined;
+    if (!row) return false;
+    let tokens: Tokens;
+    try { const [iv, tag, encrypted] = row.secret.split(".").map((part) => Buffer.from(part,"base64")); const cipher = createDecipheriv("aes-256-gcm", this.key(), iv); cipher.setAuthTag(tag); tokens = JSON.parse(Buffer.concat([cipher.update(encrypted),cipher.final()]).toString("utf8")); } catch { return false; }
+    if (tokens.email.toLowerCase() !== verifiedEmail.toLowerCase()) return false;
+    if (!this.load()) this.save(tokens);
+    this.store.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.store.db.prepare("INSERT INTO run_owners SELECT id,? FROM runs WHERE id NOT IN (SELECT run_id FROM run_owners)").run(this.userId);
+      this.store.db.prepare("INSERT OR IGNORE INTO outreach_owners SELECT id,? FROM outreach WHERE run_id IN (SELECT run_id FROM run_owners WHERE user_id=?)").run(this.userId,this.userId);
+      this.store.db.prepare("INSERT OR IGNORE INTO charge_times SELECT c.id,json_extract(r.snapshot,'$.createdAt') FROM charges c JOIN runs r ON r.id=c.run_id").run();
+      this.store.db.prepare("DELETE FROM integrations WHERE name='google'").run();
+      this.store.db.exec("COMMIT");
+    } catch(error) { this.store.db.exec("ROLLBACK"); throw error; }
+    return true;
   }
   status(): GoogleStatus {
     const tokens = this.load();
@@ -277,7 +300,7 @@ export class GoogleConnection {
   }
   async disconnect() {
     const tokens = this.load();
-    this.store.db.prepare("DELETE FROM integrations WHERE name='google'").run();
+    this.store.db.prepare("DELETE FROM integrations WHERE name=?").run(`google:${this.userId}`);
     if (tokens)
       await this.fetcher("https://oauth2.googleapis.com/revoke", {
         method: "POST",

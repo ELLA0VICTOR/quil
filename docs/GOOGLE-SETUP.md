@@ -1,6 +1,6 @@
 # Connect Gmail and Google Calendar locally
 
-Quil now implements reviewed messages, reply-aware follow-ups and calendar invitations. Your account is **not connected yet**. OpenAI and Serper credentials cannot grant Google access; you need a Google OAuth web client and one sign-in. This follows [Google's server-side OAuth flow](https://developers.google.com/identity/protocols/oauth2/web-server).
+Quil implements reviewed messages, reply-aware follow-ups and calendar invitations. This project setup is for the application developer; eventual public users should only select **Connect Gmail & Calendar** and authorize their own account. OpenAI and Serper credentials cannot grant Google access; the developer needs a Google OAuth web client. This follows [Google's server-side OAuth flow](https://developers.google.com/identity/protocols/oauth2/web-server).
 
 ## One-time setup
 
@@ -21,6 +21,8 @@ Quil now implements reviewed messages, reply-aware follow-ups and calendar invit
    ```text
    http://127.0.0.1:8787/api/google/callback
    ```
+
+   Select **Use this client for an AI-powered agent** for this dedicated Quil agent-workflow client. This identifies the client as an agent acting for the user; it does not grant additional permissions. The ordinary Google sign-in flow uses a [separate client](ACCOUNTS.md), following [Google's agent-client isolation guidance](https://support.google.com/cloud/answer/15549257?hl=en).
 
 6. Copy its client ID and client secret into the existing ignored `.env`:
 
@@ -55,4 +57,4 @@ The Gmail read scope is broad at Google's permission level. Quil's implementatio
 
 Tokens stay on the server, encrypted in the ignored SQLite database using the local `.quil-data/google-token.key`. Protect the database and key together; filesystem access to both defeats that protection. The browser receives connection status and the account email, never Google tokens or the client secret. Disconnect removes the stored connection and attempts token revocation.
 
-This is a single-owner, loopback-only integration. Public multi-user hosting needs separate user sessions and per-user credential isolation. Gmail/Calendar adapters are tested with injected Google responses; a live account connection and a send to your own test address remain to be verified after you authorize Google. No real email or calendar invitation was sent during implementation.
+Google connections now belong to signed-in Quil accounts. Each account has its own encrypted credentials, saved research and outreach actions. See [account setup](ACCOUNTS.md). Development remains local; public access still needs HTTPS callbacks and Google audience/verification setup. Live OAuth authorization and read-only Calendar access were verified on 30 October 2026. Gmail delivery and a real invitation/acceptance flow remain unverified; their adapters have injected-provider and mocked-browser tests. No real email or calendar invitation was sent during implementation or the read-only connection check.

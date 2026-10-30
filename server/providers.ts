@@ -143,7 +143,8 @@ export class OpenAIJson {
     const bytes = Buffer.byteLength(body);
     if (bytes > 14_000)
       throw Error("Model input exceeds the configured small-context limit");
-    const key = `model:${digest(body)}`;
+    const owner = this.store.db.prepare("SELECT user_id FROM run_owners WHERE run_id=?").get(this.runId) as { user_id: string } | undefined;
+    const key = `model:v2:${owner?.user_id ?? "internal"}:${digest(body)}`;
     const cached = this.store.cached<Json>(key);
     if (cached) return cached;
     // Standard GPT-6 Luna pricing verified 2026-10-29: 100/500 nano-USD per
@@ -281,7 +282,7 @@ export class LiveProvider implements TaskProvider {
   private ai: OpenAIJson;
   private search: SerperSearch;
   constructor(
-    config: Config,
+    private config: Config,
     store: Store,
     runId: string,
     fetcher: typeof fetch = fetch,
@@ -298,22 +299,23 @@ export class LiveProvider implements TaskProvider {
   ): Promise<TaskResult> {
     const { brief, candidates } = input;
     if (agent === "pip") {
-      const sources = await this.search.search(
+      let sources = await this.search.search(
         `${brief.category} in ${brief.location} ("message to book" OR "DM to book" OR "WhatsApp" OR "call to book") -inurl:reel -inurl:reels -inurl:/p/`,
         signal,
       );
+      const extract = async (records: Source[], limit: number) => {
       const raw = await this.ai.call(
         'Extract actual individual businesses, not directories or articles. JSON: {"candidates":[{"name":string,"website":string|null,"sourceIds":string[]}]}. Use only supplied sources, at most the requested limit. Prefer named businesses whose records explicitly describe manual bookings in the requested area. Never extract a directory, listicle or a social platform as a business. A missing website field means unknown; social/directory URLs are not standalone websites.',
-        { brief, sources },
+        { brief: { ...brief, limit }, sources: records },
         signal,
       );
-      const extracted = list(raw.candidates, brief.limit).flatMap((item) => {
+      const extracted = list(raw.candidates, limit).flatMap((item) => {
         const value = object(item),
           name = text(value.name, 120);
-        const ids = this.sourceIds(value.sourceIds, sources);
+        const ids = this.sourceIds(value.sourceIds, records);
         if (
           !ids.length ||
-          !sources.some(
+          !records.some(
             (s) =>
               ids.includes(s.id) &&
               normalized(
@@ -327,7 +329,7 @@ export class LiveProvider implements TaskProvider {
           const url = safeUrl(value.website);
           if (
             standaloneWebsite(url) &&
-            sources.some(
+            records.some(
               (s) =>
                 ids.includes(s.id) &&
                 (s.url === url || s.observation.includes(url)),
@@ -343,7 +345,17 @@ export class LiveProvider implements TaskProvider {
         };
       });
       const unique = [...new Map(extracted.map((c) => [c.id, c])).values()];
-      return { candidates: unique, sources };
+      return unique;
+      };
+      let found = await extract(sources, brief.limit);
+      // One broader discovery pass after a successful but empty extraction.
+      // Reserve enough of the per-run search allowance for every later review.
+      if (!found.length && this.config.searchPerRun >= 3) {
+        const broader = await this.search.search(`${brief.category} ${brief.location} business official website contact booking`, signal);
+        sources = [...new Map([...sources, ...broader].map((source) => [source.id, source])).values()];
+        found = await extract(sources, Math.min(brief.limit, this.config.searchPerRun - 2));
+      }
+      return { candidates: found, sources };
     }
     if (agent === "milo") {
       if (!candidates.length) return { findings: [] };
@@ -370,7 +382,7 @@ export class LiveProvider implements TaskProvider {
           kind: "website_page",
         }));
       const raw = await this.ai.call(
-        'Research the supplied businesses using only their source records. JSON: {"findings":[{"candidateId":string,"summary":string,"sourceIds":string[]}]}. One short observation each; distinguish snippets from verified website content. Never infer no website from missing fields.',
+        'Research the supplied businesses using only their source records. JSON: {"findings":[{"candidateId":string,"summary":string,"sourceIds":string[]}]}. One observation each, summary at most 300 characters; distinguish snippets from verified website content. Never infer no website from missing fields.',
         { ...input, websiteChecks },
         signal,
       );
@@ -380,9 +392,11 @@ export class LiveProvider implements TaskProvider {
         const ids = this.sourceIds(v.sourceIds, input.sources);
         if (!ids.length || ids.some((id) => !c.sourceIds.includes(id)))
           throw Error("Untraceable research finding");
+        const summary = text(v.summary, 4000);
+        const excerpt = input.sources.find((source) => source.id === ids[0])!.observation.slice(0, 170);
         return {
           candidateId: c.id,
-          summary: text(v.summary, 350),
+          summary: summary.length <= 350 ? summary : `Public search excerpt: “${excerpt}”. This excerpt does not verify the full website or booking process.`,
           sourceIds: ids,
         };
       });

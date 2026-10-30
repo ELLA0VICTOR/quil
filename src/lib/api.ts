@@ -5,11 +5,12 @@ import type {
   RunSnapshot,
   PreparedBrief,
 } from "../../shared/mission";
+import { workspaceHeaders } from "./session-api";
 
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(url, options);
+    response = await fetch(url, { ...options, credentials: "same-origin", headers: { ...workspaceHeaders(), ...options.headers } });
   } catch {
     throw Error(
       "Quil couldn’t connect to the server. Please try again when the connection is back.",

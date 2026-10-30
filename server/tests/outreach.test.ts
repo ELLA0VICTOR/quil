@@ -1,8 +1,9 @@
 import test from "node:test";
+import { randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { resolve, join, sep } from "node:path";
-import { Store } from "../store.ts";
+import { Store, hashToken } from "../store.ts";
 import { readConfig } from "../config.ts";
 import { GoogleConnection } from "../google.ts";
 import { OutreachService } from "../outreach.ts";
@@ -143,7 +144,8 @@ function setup() {
       sources: [],
     },
   };
-  store.createRun(run, "test-run-token");
+  store.db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run("internal-test","test-sub","freelancer@example.com","Test",new Date().toISOString());
+  store.createRun(run, "test-run-token", "internal-test");
   const input = {
     runId: run.id,
     candidateId: "business-one",
@@ -383,7 +385,7 @@ test("calendar suggestions respect busy periods, working hours and the user's ti
 });
 test("integration HTTP writes require a local owner cookie, allowed origin and explicit review header", async () => {
   const app = setup(),
-    api = createApi(app.config, { store: app.store, google: app.google });
+    api = createApi(app.config, { store: app.store, googleFactory: () => app.google });
   await new Promise<void>((resolve) =>
     api.server.listen(0, "127.0.0.1", resolve),
   );
@@ -393,9 +395,10 @@ test("integration HTTP writes require a local owner cookie, allowed origin and e
     const unauthorized = await fetch(base + "/api/google/connect", {
       method: "POST",
     });
-    assert.equal(unauthorized.status, 403);
-    const status = await fetch(base + "/api/google/status"),
-      cookie = status.headers.get("set-cookie")!.split(";")[0];
+    assert.equal(unauthorized.status, 401);
+    const token = randomBytes(32).toString("hex");
+    app.store.db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token), "internal-test", Date.now() + 3600_000);
+    const cookie = `quil_session=${token}`;
     const headers = {
       Cookie: cookie,
       Origin: "http://localhost:5173",

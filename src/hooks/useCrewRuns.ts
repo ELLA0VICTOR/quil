@@ -10,8 +10,7 @@ import {
 import type { ChatItem, MissionView } from "../lib/run-view";
 import type { AgentId, Brief, CreatedRun } from "../../shared/mission";
 
-const storageKey = "quil:active-run";
-function remember(value: CreatedRun | null) {
+function remember(value: CreatedRun | null, storageKey: string) {
   try {
     if (value) sessionStorage.setItem(storageKey, JSON.stringify(value));
     else sessionStorage.removeItem(storageKey);
@@ -19,7 +18,7 @@ function remember(value: CreatedRun | null) {
     /* Session recovery is optional in private browsing. */
   }
 }
-function remembered(): CreatedRun | null {
+function remembered(storageKey: string): CreatedRun | null {
   try {
     const value = JSON.parse(sessionStorage.getItem(storageKey) ?? "null");
     return value &&
@@ -37,9 +36,9 @@ function remembered(): CreatedRun | null {
   }
 }
 
-export function useCrewRuns() {
+export function useCrewRuns(storageKey: string) {
   const [items, setItems] = useState<ChatItem[]>(() => {
-    const saved = remembered();
+    const saved = remembered(storageKey);
     return saved ? [fromCreated(saved)] : [];
   });
   const [busy, setBusy] = useState(false);
@@ -119,7 +118,7 @@ export function useCrewRuns() {
   useEffect(() => {
     mounted.current = true;
     let disposed = false;
-    const saved = remembered();
+    const saved = remembered(storageKey);
     if (saved) {
       void getRun(saved.run.id, saved.accessToken)
         .then(({ run }) => {
@@ -131,7 +130,7 @@ export function useCrewRuns() {
         })
         .catch((error) => {
           if (disposed) return;
-          remember(null);
+          remember(null, storageKey);
           update(saved.run.id, (view) => ({
             ...view,
             status: "failed",
@@ -144,7 +143,7 @@ export function useCrewRuns() {
       mounted.current = false;
       closeStream.current?.();
     };
-  }, [attach, update]);
+  }, [attach, update, storageKey]);
 
   const start = async (
     request: string,
@@ -154,7 +153,7 @@ export function useCrewRuns() {
     if (starting.current || active.current) return;
     starting.current = true;
     setBusy(true);
-    remember(null);
+    remember(null, storageKey);
     const id = crypto.randomUUID(),
       version = generation.current;
     setItems((current) => [...current, { ...newMission(id, request), brief }]);
@@ -173,7 +172,7 @@ export function useCrewRuns() {
       setItems((current) =>
         current.map((item) => (item.id === id ? fromCreated(created) : item)),
       );
-      remember(created);
+      remember(created, storageKey);
       attach(created);
     } catch (error) {
       if (mounted.current && generation.current === version)
@@ -227,7 +226,7 @@ export function useCrewRuns() {
     generation.current++;
     closeStream.current?.();
     active.current = null;
-    remember(null);
+    remember(null, storageKey);
     setItems([]);
     setBusy(false);
   };

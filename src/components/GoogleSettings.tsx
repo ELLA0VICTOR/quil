@@ -5,8 +5,10 @@ import {
   disconnectGoogle,
 } from "../lib/outreach-api";
 import type { GoogleStatus } from "../../shared/outreach";
+import { useAccount } from "../hooks/useAccount";
 
 export default function GoogleSettings() {
+  const { session } = useAccount();
   const [status, setStatus] = useState<GoogleStatus>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -50,7 +52,7 @@ export default function GoogleSettings() {
         each send and invitation. Follow-ups are prepared for day 3 and day 7,
         and stop when a reply appears.
       </p>
-      {status && !status.configured && (
+      {status && !status.configured && session?.development && (
         <div className="google-setup">
           <p>
             Google setup is needed once. Create a Google OAuth web client with
@@ -66,6 +68,7 @@ export default function GoogleSettings() {
           <code>{status.redirectUri}</code>
         </div>
       )}
+      {status && !status.configured && !session?.development && <p>Google connections are temporarily unavailable. Please try again later.</p>}
       {status?.connected ? (
         <button
           className="text-link"

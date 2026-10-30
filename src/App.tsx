@@ -3,8 +3,11 @@ import Landing from "./pages/Landing";
 import CrewRoom from "./pages/CrewRoom";
 import { Cursor } from "./components/Shared";
 import "./App.css";
+import AccountProvider from "./components/AccountProvider";
+import { useAccount } from "./hooks/useAccount";
 
-export default function App() {
+function QuilApp() {
+  const account = useAccount();
   const [inRoom, setInRoom] = useState(() =>
     location.hash.startsWith("#/workspace"),
   );
@@ -48,7 +51,7 @@ export default function App() {
         Skip to content
       </a>
       {inRoom ? (
-        <CrewRoom goHome={goHome} />
+        account.session ? <CrewRoom key={`${account.session.user.id}:${account.session.user.authenticated}`} goHome={goHome} /> : <div className="account-opening"><p>{account.error || "Opening your workspace…"}</p>{account.error && <button className="text-link" onClick={() => void account.refresh()}>Try again</button>}</div>
       ) : (
         <Landing openWorkspace={openRoom} />
       )}
@@ -56,3 +59,4 @@ export default function App() {
     </>
   );
 }
+export default function App() { return <AccountProvider><QuilApp /></AccountProvider>; }

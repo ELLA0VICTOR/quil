@@ -1,4 +1,5 @@
 import test from "node:test";
+import { sessionFetch } from "./session-fetch.ts";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { resolve, join, sep } from "node:path";
@@ -55,7 +56,7 @@ async function start(env: NodeJS.ProcessEnv = {}) {
   };
 }
 async function create(base: string): Promise<CreatedRun> {
-  const response = await fetch(base + "/api/runs", {
+  const response = await sessionFetch(base + "/api/runs", {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -73,7 +74,7 @@ async function snapshot(
   base: string,
   created: CreatedRun,
 ): Promise<RunSnapshot> {
-  const response = await fetch(base + `/api/runs/${created.run.id}`, {
+  const response = await sessionFetch(base + `/api/runs/${created.run.id}`, {
     headers: authorization(created),
   });
   assert.equal(response.status, 200);
@@ -99,7 +100,7 @@ test("Mozaik agents overlap, invalidate a provisional pitch and produce one revi
   const api = await start();
   try {
     const created = await create(api.base);
-    const stream = fetch(api.base + created.eventsUrl).then((r) => r.text());
+    const stream = sessionFetch(api.base + created.eventsUrl).then((r) => r.text());
     const result = await complete(api.base, created);
     const events = parseEvents(await stream);
     const intervals = (agent: string) => {
@@ -163,7 +164,7 @@ test("Mozaik agents overlap, invalidate a provisional pitch and produce one revi
     );
     assert.equal(events.filter((e) => e.type === "run.completed").length, 1);
     const cursor = events[Math.floor(events.length / 2)].id;
-    const replay = await fetch(
+    const replay = await sessionFetch(
       api.base + created.eventsUrl + `&after=${cursor}`,
     );
     const replayed = parseEvents(await replay.text());
@@ -181,7 +182,7 @@ test("pause freezes publication, resume continues, and cancellation cannot later
     const created = await create(api.base);
     await delay(15);
     const command = (action: string) =>
-      fetch(`${api.base}/api/runs/${created.run.id}/${action}`, {
+      sessionFetch(`${api.base}/api/runs/${created.run.id}/${action}`, {
         method: "POST",
         headers: authorization(created),
       });
@@ -197,7 +198,7 @@ test("pause freezes publication, resume continues, and cancellation cannot later
     assert.equal((await command("resume")).status, 200);
     await complete(api.base, created);
     const second = await create(api.base);
-    const cancel = await fetch(`${api.base}/api/runs/${second.run.id}/cancel`, {
+    const cancel = await sessionFetch(`${api.base}/api/runs/${second.run.id}/cancel`, {
       method: "POST",
       headers: authorization(second),
     });
@@ -218,7 +219,7 @@ test("HTTP rejects cross-origin requests, unknown tokens, oversized briefs and o
   try {
     assert.equal(
       (
-        await fetch(api.base + "/api/health", {
+        await sessionFetch(api.base + "/api/health", {
           headers: { Origin: "https://untrusted.example" },
         })
       ).status,
@@ -239,7 +240,7 @@ test("HTTP rejects cross-origin requests, unknown tokens, oversized briefs and o
     assert.equal(badHost, 403);
     assert.equal(
       (
-        await fetch(api.base + "/api/runs", {
+        await sessionFetch(api.base + "/api/runs", {
           method: "POST",
           headers,
           body: JSON.stringify({ request: "x".repeat(2001) }),
@@ -249,12 +250,12 @@ test("HTTP rejects cross-origin requests, unknown tokens, oversized briefs and o
     );
     const created = await create(api.base);
     assert.equal(
-      (await fetch(api.base + `/api/runs/${created.run.id}`)).status,
+      (await sessionFetch(api.base + `/api/runs/${created.run.id}`)).status,
       404,
     );
     assert.equal(
       (
-        await fetch(api.base + `/api/runs/${created.run.id}/cancel`, {
+        await sessionFetch(api.base + `/api/runs/${created.run.id}/cancel`, {
           method: "POST",
           headers: { Authorization: `Bearer ${"0".repeat(64)}` },
         })
@@ -263,7 +264,7 @@ test("HTTP rejects cross-origin requests, unknown tokens, oversized briefs and o
     );
     assert.equal(
       (
-        await fetch(api.base + "/api/runs", {
+        await sessionFetch(api.base + "/api/runs", {
           method: "POST",
           headers,
           body: JSON.stringify({ request: "another run" }),
@@ -272,7 +273,7 @@ test("HTTP rejects cross-origin requests, unknown tokens, oversized briefs and o
       429,
     );
     assert.equal(
-      (await fetch(api.base + created.eventsUrl + "&after=-1")).status,
+      (await sessionFetch(api.base + created.eventsUrl + "&after=-1")).status,
       400,
     );
   } finally {
@@ -606,7 +607,7 @@ test("restarting marks unfinished runs failed without releasing reservations or 
 test("the example stays free on a live-configured server, and brief clarification never starts work", async () => {
   const api = await start({ QUIL_MODE: "live", QUIL_ENABLE_LIVE: "false" });
   try {
-    const clarify = await fetch(api.base + "/api/brief", {
+    const clarify = await sessionFetch(api.base + "/api/brief", {
       method: "POST",
       headers,
       body: JSON.stringify({ request: "I build websites" }),
@@ -614,7 +615,7 @@ test("the example stays free on a live-configured server, and brief clarificatio
     assert.equal(clarify.status, 200);
     assert.deepEqual((await clarify.json()).missing, ["category", "location"]);
     assert.equal(api.active.size, 0);
-    const response = await fetch(api.base + "/api/runs", {
+    const response = await sessionFetch(api.base + "/api/runs", {
       method: "POST",
       headers,
       body: JSON.stringify({ request: "Try the example", mode: "fixture" }),
@@ -624,7 +625,7 @@ test("the example stays free on a live-configured server, and brief clarificatio
     const result = await complete(api.base, created);
     assert.equal(result.mode, "fixture");
     assert.deepEqual(api.store.usage(created.run.id), []);
-    const blocked = await fetch(api.base + "/api/runs", {
+    const blocked = await sessionFetch(api.base + "/api/runs", {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -801,4 +802,35 @@ test("live adapters qualify before paid writing and correct an ungrounded introd
     store.close();
     remove(directory);
   }
+});
+
+test("empty discovery broadens once, keeps review capacity, and bounds verbose research with a sourced fallback", async () => {
+  const directory=temporary(),store=new Store(directory),config=readConfig(liveEnv);
+  let searches=0,extractions=0;
+  const transport: typeof fetch=async(url,init)=>{
+    const payload=JSON.parse(init!.body as string);
+    if(url==='https://google.serper.dev/search'){
+      searches++;
+      return Response.json({organic:searches===1?[]:[{title:'North Cleaning',link:'https://north.example.org/',snippet:'North Cleaning in Manchester. Contact us for appointments.'}]});
+    }
+    const data=JSON.parse(payload.input).data;
+    let answer:unknown;
+    if(payload.instructions.startsWith('Extract')){
+      extractions++;
+      if(extractions===1)answer={candidates:[]};
+      else {assert.equal(data.brief.limit,2);answer={candidates:[{name:'North Cleaning',website:'https://north.example.org/',sourceIds:[data.sources[0].id]}]};}
+    }else answer={findings:[{candidateId:data.candidates[0].id,summary:'Unsupported verbose model prose. '.repeat(20),sourceIds:data.candidates[0].sourceIds}]};
+    return Response.json({status:'completed',usage:{input_tokens:100,output_tokens:100},output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(answer)}]}]});
+  };
+  try{
+    const provider=new LiveProvider(config,store,'broader-discovery',transport,async()=>({status:200,url:'https://north.example.org/',html:'<html><body>Contact</body></html>',truncated:false}));
+    const input:TaskInput={brief:{request:'Find cleaners',category:'cleaning',location:'Manchester',service:'website design',limit:3},revision:0,candidates:[],findings:[],decisions:[],sources:[]};
+    const discovered=await provider.execute('pip',input,new AbortController().signal);
+    assert.equal(searches,2);assert.equal(extractions,2);assert.equal(discovered.candidates!.length,1);
+    const researched=await provider.execute('milo',{...input,...discovered},new AbortController().signal);
+    assert.ok(researched.findings![0].summary.length<=350);
+    assert.match(researched.findings![0].summary,/North Cleaning in Manchester/);
+    assert.doesNotMatch(researched.findings![0].summary,/Unsupported verbose/);
+    assert.equal(searches,2);
+  }finally{store.close();remove(directory);}
 });
