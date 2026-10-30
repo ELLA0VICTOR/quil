@@ -108,16 +108,15 @@ export default function CrewExchange({
             ? `Source-backed search · ${location}`
             : "Connecting to Quil"}
       </p>
-      <details className="crew-activity" open={!complete}>
-        <summary>
+      <section className="crew-activity" aria-label="Live crew activity">
+        <div className="crew-activity-heading">
           <span>Crew activity</span>
           <span className="crew-activity-voices" aria-hidden="true">
             {crew.map((person) => (
               <i key={person.id} style={{ background: person.color }} />
             ))}
           </span>
-          <Icon name="chevron" size={13} />
-        </summary>
+        </div>
         <div className="collaboration-map" ref={map}>
           {connections && (
             <svg
@@ -194,7 +193,7 @@ export default function CrewExchange({
             <Icon name={complete ? "check" : "feather"} size={13} />
           </div>
         </div>
-      </details>
+      </section>
       {complete ? (
         <section className="shared-outcome" aria-label="Combined result">
           <div className="outcome-heading">

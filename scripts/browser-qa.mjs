@@ -309,10 +309,8 @@ try {
   const mission = await evaluate(
     `({phase:document.querySelector('.crew-scene-room').dataset.phase,leads:document.querySelectorAll('.conversation-results .lead-entry').length,review:document.querySelector('.conversation-messages').textContent.includes('withdrawn'),exampleLabel:document.querySelector('.results-note').textContent.includes('FICTIONAL')})`,
   );
-  const compactAnswer = await evaluate("!document.querySelector('.crew-activity').open&&!!document.querySelector('[aria-label=\"Copy answer\"]')&&getComputedStyle(document.querySelector('.exchange-brief')).borderLeftWidth==='0px'");
+  const compactAnswer = await evaluate("!document.querySelector('details.crew-activity')&&!!document.querySelector('[aria-label=\"Copy answer\"]')&&getComputedStyle(document.querySelector('.exchange-brief')).borderLeftWidth==='0px'");
   await screenshot("53-clean-conversation-answer");
-  await click(".crew-activity > summary");
-  await wait(150);
   const exchange = await evaluate(`(()=>{
     const nodes=[...document.querySelectorAll('.agent-contribution')];
     const rects=nodes.map(node=>node.getBoundingClientRect());
@@ -330,7 +328,7 @@ try {
       primaryLeads:document.querySelectorAll('.conversation-results > .lead-entry').length,
       detailsClosed:!document.querySelector('.reviewed-others').open,
       resultVisible:document.querySelector('.shared-outcome').getBoundingClientRect().top>=document.querySelector('.room-conversation').getBoundingClientRect().top,
-      duplicateCrewHidden:getComputedStyle(document.querySelector('.room-crew-area')).display==='none'
+      persistentCrewVisible:getComputedStyle(document.querySelector('.room-crew-area')).display!=='none'&&document.querySelectorAll('.room-crew-area .crew-member').length===5&&document.querySelector('.room-crew-area').getBoundingClientRect().bottom<=document.querySelector('.room-conversation').getBoundingClientRect().top
       ,singleResponse:!document.querySelector('.outcome-summary')&&!document.querySelector('.lead-answer .lead-entry-top')&&!!document.querySelector('.answer-prose')
       ,unifiedAnswerColor:new Set([...document.querySelectorAll('.shared-outcome p,.shared-outcome span,.shared-outcome button,.shared-outcome h2,.shared-outcome summary')].map(el=>getComputedStyle(el).color)).size===1
     };
@@ -389,6 +387,21 @@ try {
   );
   const savedReadability = await evaluate("({color:getComputedStyle(document.querySelector('.saved-leads .lead-one-line')).color,font:getComputedStyle(document.querySelector('.saved-leads .lead-one-line')).fontSize})");
   await screenshot("54-readable-saved-opportunities");
+  await click(".saved-leads .lead-remove");
+  let savedRemoval = false;
+  for (let i=0;i<30;i++) {
+    savedRemoval = await evaluate("fetch('/api/me/saved').then(r=>r.json()).then(r=>r.saved.length===0&&!!document.querySelector('.saved-nothing'))");
+    if (savedRemoval) break;
+    await wait(100);
+  }
+  await send("Page.reload");
+  for (let i=0;i<80;i++) {
+    if (await evaluate("document.querySelector('.crew-exchange')?.dataset.status==='completed'")) break;
+    await wait(60);
+  }
+  const removalSurvivesReload = await evaluate("JSON.parse(localStorage.getItem('quil:'+window.__quilQaUserId+':saved:v3')).length===0&&!document.querySelector('.room-saved-button').textContent.includes('1')");
+  await click(".lead-entry .lead-save");
+  await click(".room-saved-button");
   await send("Input.dispatchKeyEvent", {
     type: "keyDown",
     key: "Escape",
@@ -455,12 +468,15 @@ try {
     "(()=>{const feed=document.querySelector('.room-conversation');const exchange=document.querySelector('.crew-exchange');feed.scrollTo({top:feed.scrollTop+exchange.getBoundingClientRect().top-feed.getBoundingClientRect().top-16,behavior:'instant'})})()",
   );
   await wait(200);
-  await evaluate("(()=>{const details=document.querySelector('.crew-activity');if(!details.open)details.querySelector('summary').click()})()");
-  await wait(150);
   const mobileExchange = await evaluate(
     `(()=>{const map=document.querySelector('.collaboration-map').getBoundingClientRect();return {agents:document.querySelectorAll('.agent-contribution').length,overflow:document.documentElement.scrollWidth>innerWidth,nodesFit:[...document.querySelectorAll('.agent-contribution')].every(n=>{const r=n.getBoundingClientRect();return r.left>=map.left-1&&r.right<=map.right+1})}})()`,
   );
   await screenshot("52-combined-crew-mobile");
+  await click(".room-saved-button");
+  const mobileSaved = await evaluate("({fits:document.querySelector('.side-sheet').scrollWidth<=document.querySelector('.side-sheet').clientWidth,remove:!!document.querySelector('.saved-leads .lead-remove')})");
+  await screenshot("55-mobile-saved-remove");
+  await send("Input.dispatchKeyEvent", {type:"keyDown",key:"Escape",code:"Escape"});
+  await send("Input.dispatchKeyEvent", {type:"keyUp",key:"Escape",code:"Escape"});
   await click(".room-header .icon-button");
   await wait(100);
   await screenshot("20-mobile-welcome");
@@ -651,8 +667,11 @@ try {
     exchange,
     compactAnswer,
     savedReadability,
+    savedRemoval,
+    removalSurvivesReload,
     reviewedOthers,
     mobileExchange,
+    mobileSaved,
     evidence,
     draft,
     savedDraftUpdated,
@@ -723,7 +742,11 @@ try {
     exchange.primaryLeads !== 1 ||
     !exchange.detailsClosed ||
     !exchange.resultVisible ||
-    !exchange.duplicateCrewHidden ||
+    !exchange.persistentCrewVisible ||
+    !mobileSaved.fits ||
+    !mobileSaved.remove ||
+    !savedRemoval ||
+    !removalSurvivesReload ||
     !exchange.singleResponse ||
     !exchange.unifiedAnswerColor ||
     !reviewedOthers ||

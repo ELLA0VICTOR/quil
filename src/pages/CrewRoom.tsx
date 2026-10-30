@@ -253,12 +253,20 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
     setSaved((current) =>
       current.map((p) => (p.id === prospect.id ? { ...p, draft } : p)),
     );
-  const entry = (prospect: Prospect, answerText?: string) => (
+  const entry = (prospect: Prospect, answerText?: string, removable = false) => (
     <ProspectEntry
       key={prospect.id}
       prospect={prospect}
       saved={saved.some((p) => p.id === prospect.id)}
       onSave={toggleSave}
+      onRemove={
+        removable
+          ? () => {
+              setSaved((current) => current.filter((item) => item.id !== prospect.id));
+              notify("Removed from saved.");
+            }
+          : undefined
+      }
       onDraftChange={(draft) => updateDraft(prospect, draft)}
       onOfferChange={(offer) =>
         setSaved((current) =>
@@ -618,7 +626,9 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
               <p className="sheet-description">Your saved opportunities.</p>
               {saved.length ? (
                 <>
-                  <div className="saved-leads">{saved.map((p) => entry(p))}</div>
+                  <div className="saved-leads">
+                    {saved.map((p) => entry(p, undefined, true))}
+                  </div>
                   <button className="text-link export-saved" onClick={exportSaved}>
                     <Icon name="download" size={14} /> Export saved businesses
                   </button>

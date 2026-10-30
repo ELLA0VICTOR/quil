@@ -12,6 +12,7 @@ export default function ProspectEntry({
   answerText,
   onDraftChange,
   onOfferChange,
+  onRemove,
 }: {
   prospect: Prospect;
   saved: boolean;
@@ -21,6 +22,7 @@ export default function ProspectEntry({
   answerText?: string;
   onDraftChange?: (draft: string) => void;
   onOfferChange?: (offer: string) => void;
+  onRemove?: () => void;
 }) {
   const [view, setView] = useState<"none" | "evidence" | "draft" | "offer" | "outreach">(
       "none",
@@ -64,14 +66,24 @@ export default function ProspectEntry({
                   ? "Ruled out"
                   : "Check again"}
             </span>
-            <button
-              className={`icon-button lead-save${saved ? " is-saved" : ""}`}
-              onClick={() => onSave({ ...prospect, draft, offer })}
-              aria-label={`${saved ? "Unsave" : "Save"} ${prospect.name}`}
-              aria-pressed={saved}
-            >
-              <Icon name={saved ? "check" : "bookmark"} size={15} />
-            </button>
+            {onRemove ? (
+              <button
+                className="lead-remove"
+                onClick={onRemove}
+                aria-label={`Remove ${prospect.name} from saved`}
+              >
+                <Icon name="trash" size={15} /> Remove
+              </button>
+            ) : (
+              <button
+                className={`icon-button lead-save${saved ? " is-saved" : ""}`}
+                onClick={() => onSave({ ...prospect, draft, offer })}
+                aria-label={`${saved ? "Unsave" : "Save"} ${prospect.name}`}
+                aria-pressed={saved}
+              >
+                <Icon name={saved ? "check" : "bookmark"} size={15} />
+              </button>
+            )}
           </div>
           <p className="lead-one-line">{prospect.note}</p>
         </>

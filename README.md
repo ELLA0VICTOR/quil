@@ -75,7 +75,7 @@ The crew works through **Mozaik**, sharing findings and responding when another 
 | Offer boundaries | Handles counteroffers within your quote, minimum price, scope and delivery terms. |
 | Meetings | Suggests times from your calendar, prepares an agenda, creates approved invitations and checks attendee responses. |
 | Private workspaces | Keeps research, saved opportunities and Google connections with their signed-in account. |
-| Saved prospects | Preserves edited drafts and evidence across sessions, with CSV export. |
+| Saved prospects | Saves and removes opportunities, preserves edited drafts and evidence across sessions, and exports CSV. |
 | Live collaboration | Shows agent activity as it happens, with pause, resume, cancellation and refresh recovery. |
 
 ## How Quil works

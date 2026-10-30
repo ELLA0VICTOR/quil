@@ -27,7 +27,8 @@ export type IconName =
   | "refresh"
   | "target"
   | "file"
-  | "plus";
+  | "plus"
+  | "trash";
 const paths: Record<IconName, ReactNode> = {
   feather: (
     <>
@@ -93,6 +94,11 @@ const paths: Record<IconName, ReactNode> = {
   ),
   download: <path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
+  trash: (
+    <>
+      <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+    </>
+  ),
   menu: <path d="M4 6h16M4 12h16M4 18h16" />,
   settings: (
     <>
