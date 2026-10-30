@@ -87,10 +87,10 @@ export default function CrewScene({
     if (phase || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = setInterval(
       () => setAutoIndex((i) => (i + 1) % autoPhases.length),
-      3600,
+      variant === "landing" ? 2100 : 3600,
     );
     return () => clearInterval(timer);
-  }, [phase]);
+  }, [phase, variant]);
   const current = phase ?? autoPhases[autoIndex];
   const moving =
     current !== "idle" && current !== "paused" && current !== "complete";
