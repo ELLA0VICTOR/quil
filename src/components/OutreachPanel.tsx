@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Prospect } from "../lib/run-view";
-import type { OutreachAction, GoogleStatus } from "../../shared/outreach";
+import type { OutreachAction, GoogleStatus, ReplyPlan } from "../../shared/outreach";
 import {
   googleStatus,
   listOutreach,
@@ -9,6 +9,7 @@ import {
   meetingSlots,
 } from "../lib/outreach-api";
 import GoogleSettings from "./GoogleSettings";
+import ReplyAssistant from "./ReplyAssistant";
 import { safeSourceUrl } from "../lib/run-view";
 
 const actionLabel = (action: OutreachAction) =>
@@ -20,7 +21,7 @@ const actionLabel = (action: OutreachAction) =>
           ? "Invitation declined"
           : "Invitation sent · awaiting response"
       : action.receivedReply
-        ? "Reply received · open Gmail"
+        ? "Reply received"
         : "Message sent"
     : action.state === "uncertain" || action.state === "sending"
       ? "Confirmation needed · check status"
@@ -36,20 +37,19 @@ export default function OutreachPanel({
 }) {
   const [status, setStatus] = useState<GoogleStatus>(),
     [actions, setActions] = useState<OutreachAction[]>([]);
-  const [kind, setKind] = useState<"email" | "follow_up" | "meeting">("email"),
+  const [kind, setKind] = useState<"email" | "follow_up" | "reply" | "meeting">("email"),
     [recipient, setRecipient] = useState(""),
     [confirmed, setConfirmed] = useState(false);
-  const [subject, setSubject] = useState(
-      `A booking-page idea for ${prospect.name}`,
-    ),
+  const [subject, setSubject] = useState(`A booking-page idea for ${prospect.name}`),
     [message, setMessage] = useState(draft),
     [includeOffer, setIncludeOffer] = useState(false);
+  const [replyPlan, setReplyPlan] = useState<ReplyPlan>();
   const [start, setStart] = useState(""),
     [duration, setDuration] = useState(20),
     [timeZone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [slots, setSlots] = useState<
-    { start: string; end: string; timeZone: string }[]
-  >([]);
+  const [slots, setSlots] = useState<{ start: string; end: string; timeZone: string }[]>(
+    [],
+  );
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [preview, setPreview] = useState<OutreachAction>();
@@ -61,15 +61,10 @@ export default function OutreachPanel({
         if (!alive) return;
         setStatus(value);
         if (prospect.runId && prospect.candidateId) {
-          const result = await listOutreach(
-            prospect.runId,
-            prospect.candidateId,
-          );
+          const result = await listOutreach(prospect.runId, prospect.candidateId);
           if (alive) {
             setActions(result.actions);
-            const pending = result.actions.find(
-              (action) => action.state === "prepared",
-            );
+            const pending = result.actions.find((action) => action.state === "prepared");
             setPreview(pending);
             setRecipient(result.actions[0]?.recipient ?? "");
           }
@@ -83,14 +78,8 @@ export default function OutreachPanel({
     };
   }, [prospect.runId, prospect.candidateId, prospect.fictional]);
   const update = (action: OutreachAction) =>
-    setActions((current) => [
-      action,
-      ...current.filter((item) => item.id !== action.id),
-    ]);
-  const perform = async (
-    id: string,
-    operation: "approve" | "sync" | "cancel",
-  ) => {
+    setActions((current) => [action, ...current.filter((item) => item.id !== action.id)]);
+  const perform = async (id: string, operation: "approve" | "sync" | "cancel") => {
     if (busy) return;
     setBusy(true);
     setError("");
@@ -101,15 +90,12 @@ export default function OutreachPanel({
     } catch (error) {
       setError((error as Error).message);
       if (prospect.runId && prospect.candidateId) {
-        const result = await listOutreach(
-          prospect.runId,
-          prospect.candidateId,
-        ).catch(() => undefined);
+        const result = await listOutreach(prospect.runId, prospect.candidateId).catch(
+          () => undefined,
+        );
         if (result) {
           setActions(result.actions);
-          setPreview(
-            result.actions.find((action) => action.state === "prepared"),
-          );
+          setPreview(result.actions.find((action) => action.state === "prepared"));
         }
       }
     } finally {
@@ -162,6 +148,19 @@ export default function OutreachPanel({
           (includeOffer && kind === "email" && prospect.offer
             ? `\n\n${prospect.offer}`
             : ""),
+        ...(kind === "reply" && replyPlan
+          ? {
+              parentId: replyPlan.rootId,
+              replyToMessageId: replyPlan.replyToMessageId,
+              terms: replyPlan.terms
+                ? {
+                    ...replyPlan.terms,
+                    price: (replyPlan.terms.priceMinor / 100).toFixed(2),
+                    minimum: (replyPlan.terms.minimumMinor / 100).toFixed(2),
+                  }
+                : undefined,
+            }
+          : {}),
         ...(kind === "meeting"
           ? { start: a.toISOString(), end: b.toISOString(), timeZone }
           : {}),
@@ -171,15 +170,12 @@ export default function OutreachPanel({
     } catch (error) {
       setError((error as Error).message);
       if (prospect.runId && prospect.candidateId) {
-        const history = await listOutreach(
-          prospect.runId,
-          prospect.candidateId,
-        ).catch(() => undefined);
+        const history = await listOutreach(prospect.runId, prospect.candidateId).catch(
+          () => undefined,
+        );
         if (history) {
           setActions(history.actions);
-          setPreview(
-            history.actions.find((action) => action.state === "prepared"),
-          );
+          setPreview(history.actions.find((action) => action.state === "prepared"));
         }
       }
     } finally {
@@ -189,16 +185,15 @@ export default function OutreachPanel({
   if (prospect.fictional)
     return (
       <p className="outreach-note">
-        This is a fictional business. Review the offer and follow-up drafts
-        here; sending and calendar invitations are available only for approved
-        live findings.
+        This is a fictional business. Review the offer and follow-up drafts here; sending
+        and calendar invitations are available only for approved live findings.
       </p>
     );
   if (!prospect.runId || !prospect.candidateId)
     return (
       <p className="outreach-note">
-        This older saved record has no linked run. Open a new live result to
-        prepare outreach.
+        This older saved record has no linked run. Open a new live result to prepare
+        outreach.
       </p>
     );
   return (
@@ -208,9 +203,8 @@ export default function OutreachPanel({
       ) : (
         <>
           <p className="outreach-note">
-            Sending from {status.email}. Use a business address you have
-            checked; a source profile does not identify the owner’s email
-            automatically.
+            Sending from {status.email}. Use a business address you have checked; a source
+            profile does not identify the owner’s email automatically.
           </p>
           {!!actions.length && (
             <div className="outreach-history">
@@ -221,7 +215,9 @@ export default function OutreachPanel({
                       ? "Meeting"
                       : action.kind === "follow_up"
                         ? `Follow-up ${action.followUpNumber}`
-                        : "Introduction"}
+                        : action.kind === "reply"
+                          ? "Reply"
+                          : "Introduction"}
                   </strong>
                   <span>{actionLabel(action)}</span>
                   {action.threadId && (
@@ -265,12 +261,40 @@ export default function OutreachPanel({
               ))}
             </div>
           )}
+          {!preview &&
+            actions.find(
+              (action) => action.kind === "email" && action.state === "sent",
+            ) && (
+              <ReplyAssistant
+                key={actions.filter((action) => action.state === "sent").length}
+                rootId={
+                  actions.find(
+                    (action) => action.kind === "email" && action.state === "sent",
+                  )!.id
+                }
+                onReply={(plan) => {
+                  setReplyPlan(plan);
+                  setKind("reply");
+                  setMessage(plan.text);
+                  setSubject(plan.subject);
+                  setRecipient(plan.recipient);
+                  setConfirmed(false);
+                  setError("");
+                }}
+                onMeeting={(value) => {
+                  choose("meeting");
+                  const date = new Date(value);
+                  setStart(
+                    new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+                      .toISOString()
+                      .slice(0, 16),
+                  );
+                }}
+              />
+            )}
           {preview ? (
             <div className="outreach-preview">
-              <h4>
-                Review before{" "}
-                {preview.kind === "meeting" ? "inviting" : "sending"}
-              </h4>
+              <h4>Review before {preview.kind === "meeting" ? "inviting" : "sending"}</h4>
               <p>
                 From: {preview.sender}
                 <br />
@@ -321,13 +345,12 @@ export default function OutreachPanel({
                 Next step
                 <select
                   value={kind}
-                  onChange={(event) =>
-                    choose(event.target.value as typeof kind)
-                  }
+                  onChange={(event) => choose(event.target.value as typeof kind)}
                 >
                   <option value="email">Contact the business</option>
-                  <option value="follow_up">
-                    Follow up on the introduction
+                  <option value="follow_up">Follow up on the introduction</option>
+                  <option value="reply" disabled={!replyPlan}>
+                    Reply to the conversation
                   </option>
                   <option value="meeting">Arrange a meeting</option>
                 </select>
@@ -400,9 +423,8 @@ export default function OutreachPanel({
               )}
               {kind === "follow_up" && (
                 <p>
-                  Day 3, then day 7 after the introduction. Quil checks for
-                  replies before sending. Nothing runs as an unattended
-                  campaign.
+                  Day 3, then day 7 after the introduction. Quil checks for replies before
+                  sending. Nothing runs as an unattended campaign.
                 </p>
               )}
               {kind === "meeting" && (
@@ -441,10 +463,7 @@ export default function OutreachPanel({
                           onClick={() => {
                             const date = new Date(slot.start);
                             setStart(
-                              new Date(
-                                date.getTime() -
-                                  date.getTimezoneOffset() * 60_000,
-                              )
+                              new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
                                 .toISOString()
                                 .slice(0, 16),
                             );
@@ -467,9 +486,7 @@ export default function OutreachPanel({
                     Duration
                     <select
                       value={duration}
-                      onChange={(event) =>
-                        setDuration(Number(event.target.value))
-                      }
+                      onChange={(event) => setDuration(Number(event.target.value))}
                     >
                       <option value={15}>15 minutes</option>
                       <option value={20}>20 minutes</option>
@@ -479,8 +496,8 @@ export default function OutreachPanel({
                     </select>
                   </label>
                   <p>
-                    Choose a time discussed with the business. Quil checks your
-                    calendar; it cannot see the attendee’s availability.
+                    Choose a time discussed with the business. Quil checks your calendar;
+                    it cannot see the attendee’s availability.
                   </p>
                 </>
               )}

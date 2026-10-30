@@ -8,6 +8,7 @@ import { readConfig } from "../config.ts";
 import { GoogleConnection } from "../google.ts";
 import { OutreachService } from "../outreach.ts";
 import { createApi } from "../http.ts";
+import { offerTerms, planReply, publicTerms } from "../replies.ts";
 import type { RunSnapshot } from "../../shared/mission.ts";
 
 const root = resolve(".quil-data/tests");
@@ -23,6 +24,9 @@ async function setup() {
     lost = false,
     attendance = "needsAction",
     grantScopes = "";
+  let replyText = "Yes, I am interested. What is the price?",
+    replyVersion = 1;
+  const sentBodies: string[] = [];
   const config = readConfig({
     QUIL_DATA_DIR: directory,
     GOOGLE_CLIENT_ID: "test-client",
@@ -54,6 +58,7 @@ async function setup() {
       sends++;
       const payload = JSON.parse(init!.body as string);
       const raw = Buffer.from(payload.raw, "base64url").toString("utf8");
+      sentBodies.push(raw);
       assert.match(raw, /To: <owner@example.com>/);
       assert.doesNotMatch(raw, /Bcc:/);
       if (lost) throw Error("private-test-access must never reach the UI");
@@ -65,6 +70,12 @@ async function setup() {
           {
             id: "message-1",
             payload: {
+              mimeType: "text/plain",
+              body: {
+                data: Buffer.from("Would a booking page be useful?").toString(
+                  "base64url",
+                ),
+              },
               headers: [
                 { name: "From", value: "Freelancer <freelancer@example.com>" },
                 { name: "Message-ID", value: "<actual-message@example.com>" },
@@ -74,9 +85,31 @@ async function setup() {
           ...(reply
             ? [
                 {
-                  id: "reply-1",
+                  id: `reply-${replyVersion}`,
                   payload: {
-                    headers: [{ name: "From", value: "Owner <owner@example.com>" }],
+                    mimeType: "text/plain",
+                    body: { data: Buffer.from(replyText).toString("base64url") },
+                    headers: [
+                      { name: "From", value: "Owner <owner@example.com>" },
+                      {
+                        name: "Message-ID",
+                        value: `<reply-${replyVersion}@business.test>`,
+                      },
+                    ],
+                  },
+                },
+              ]
+            : []),
+          ...(reply && sends > 1
+            ? [
+                {
+                  id: `message-${sends}`,
+                  payload: {
+                    mimeType: "text/plain",
+                    body: {
+                      data: Buffer.from("My reviewed reply").toString("base64url"),
+                    },
+                    headers: [{ name: "From", value: "freelancer@example.com" }],
                   },
                 },
               ]
@@ -189,6 +222,12 @@ async function setup() {
     connect,
     close,
     counts: () => ({ sends, invites }),
+    sentBodies,
+    changeReply: (value: string) => {
+      reply = true;
+      replyText = value;
+      replyVersion++;
+    },
     advance: (days: number) => {
       now += days * 86400_000;
     },
@@ -207,6 +246,94 @@ async function setup() {
     now: () => now,
   };
 }
+
+test("reviewed replies read only the owned conversation, preserve threading and send once", async () => {
+  const app = await setup();
+  try {
+    await app.connect();
+    const initial = await app.service.prepare(app.input);
+    await app.service.approve(initial.id, true);
+    app.setReply(true);
+    const conversation = await app.service.conversation(initial.id);
+    assert.equal(conversation.canReply, true);
+    assert.match(conversation.latestIncoming!.text, /price/);
+    const terms = offerTerms({
+      currency: "USD",
+      price: "500",
+      minimum: "400",
+      scope: "One booking page",
+      deliveryDays: 10,
+    })!;
+    const plan = await planReply(conversation, terms);
+    const input = {
+      ...app.input,
+      kind: "reply",
+      parentId: initial.id,
+      replyToMessageId: plan.replyToMessageId,
+      text: plan.text,
+      terms: publicTerms(terms),
+    };
+    await assert.rejects(
+      app.service.prepare({ ...input, text: "I can do it for $100." }),
+      /outside/,
+    );
+    const previews = await Promise.allSettled([
+      app.service.prepare(input),
+      app.service.prepare(input),
+    ]);
+    const result = previews.find((r) => r.status === "fulfilled");
+    assert.equal(previews.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal(app.counts().sends, 1);
+    if (!result || result.status !== "fulfilled") throw Error("Expected reply preview");
+    const preview = result.value;
+    const deliveries = await Promise.allSettled([
+      app.service.approve(preview.id, true),
+      app.service.approve(preview.id, true),
+    ]);
+    assert.equal(deliveries.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal(app.counts().sends, 2);
+    assert.match(app.sentBodies.at(-1)!, /In-Reply-To: <reply-1@business.test>/);
+    const body = Buffer.from(
+      app.sentBodies.at(-1)!.split("\r\n\r\n")[1],
+      "base64",
+    ).toString("utf8");
+    assert.doesNotMatch(body, /minimum|400/);
+    assert.equal((await app.service.conversation(initial.id)).canReply, false);
+    assert.equal((await app.service.sync(preview.id)).receivedReply, false);
+    const other = new OutreachService(app.store, app.google, app.now, "other-user");
+    await assert.rejects(other.conversation(initial.id), /not found/);
+  } finally {
+    await app.close();
+  }
+});
+
+test("a new reply invalidates the prepared response and opt-outs stop future outreach", async () => {
+  const app = await setup();
+  try {
+    await app.connect();
+    const initial = await app.service.prepare(app.input);
+    await app.service.approve(initial.id, true);
+    app.setReply(true);
+    const preview = await app.service.prepare({
+      ...app.input,
+      kind: "reply",
+      parentId: initial.id,
+      replyToMessageId: "reply-1",
+    });
+    app.changeReply("I have another question about the scope.");
+    await assert.rejects(app.service.approve(preview.id, true), /new message arrived/);
+    assert.equal(app.counts().sends, 1);
+    app.changeReply("Not interested. Do not email me again.");
+    assert.equal((await app.service.conversation(initial.id)).stopped, true);
+    await assert.rejects(
+      app.service.prepare({ ...app.input, kind: "meeting" }),
+      /declined/,
+    );
+    assert.equal(app.counts().sends, 1);
+  } finally {
+    await app.close();
+  }
+});
 
 test("Google uses single-use OAuth state, encrypted server credentials and exposes no tokens", async () => {
   const app = await setup();
@@ -377,6 +504,9 @@ test("integration HTTP writes require a local owner cookie, allowed origin and e
     api = await createApi(app.config, {
       store: app.store,
       googleFactory: () => app.google,
+      replyAnalyzerFactory:
+        () =>
+        async ({ text }) => ({ intent: "pricing", evidence: text.slice(0, 100) }),
     });
   await new Promise<void>((resolve) => api.server.listen(0, "127.0.0.1", resolve));
   const port = (api.server.address() as { port: number }).port,
@@ -422,6 +552,43 @@ test("integration HTTP writes require a local owner cookie, allowed origin and e
       body: JSON.stringify({ approved: true }),
     });
     assert.equal(sent.status, 200);
+    app.setReply(true);
+    const threadPath = base + `/api/outreach/${action.id}/thread`;
+    assert.equal(
+      (await fetch(threadPath, { method: "POST", headers, body: "{}" })).status,
+      403,
+    );
+    const conversationResponse = await fetch(threadPath, {
+      method: "POST",
+      headers: reviewHeaders,
+      body: "{}",
+    });
+    assert.equal(conversationResponse.status, 200);
+    assert.equal(
+      (await conversationResponse.json()).conversation.latestIncoming.id,
+      "reply-1",
+    );
+    const planned = await fetch(base + `/api/outreach/${action.id}/draft-reply`, {
+      method: "POST",
+      headers: reviewHeaders,
+      body: JSON.stringify({
+        terms: {
+          currency: "USD",
+          price: "500",
+          minimum: "400",
+          scope: "One booking page",
+          deliveryDays: 10,
+        },
+      }),
+    });
+    assert.equal(planned.status, 200);
+    assert.match((await planned.json()).plan.text, /\$500/);
+    assert.ok(
+      (await app.store.events(app.run.id)).some(
+        (event) => event.agent === "iris" && event.type === "outreach.agent.completed",
+      ),
+    );
+    assert.equal(app.counts().sends, 1);
     assert.ok(
       (await app.store.events(app.run.id)).some(
         (event) => event.type === "outreach.agent.completed" && event.agent === "wren",

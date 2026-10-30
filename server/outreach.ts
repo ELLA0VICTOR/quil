@@ -1,7 +1,8 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { Store } from "./store.ts";
 import { ActionError, GoogleConnection } from "./google.ts";
-import type { OutreachAction } from "../shared/outreach.ts";
+import type { Conversation, OutreachAction, ThreadMessage } from "../shared/outreach.ts";
+import { checkReplyPrice, declined, messageText, offerTerms } from "./replies.ts";
 import type { RunSnapshot } from "../shared/mission.ts";
 
 const email = (value: unknown) => {
@@ -36,19 +37,27 @@ export class OutreachService {
     readonly userId = google.userId,
   ) {}
   private async persist(action: OutreachAction) {
-    await this.store.db
-      .prepare("INSERT OR REPLACE INTO outreach VALUES(?,?,?,?,?)")
-      .run(
-        action.id,
-        action.runId,
-        action.candidateId,
-        action.state,
-        JSON.stringify(action),
-      );
-    await this.store.db
-      .prepare("INSERT OR REPLACE INTO outreach_owners VALUES(?,?)")
-      .run(action.id, this.userId);
-    return action;
+    return this.store.db.transaction(async () => {
+      const previous = (await this.store.db
+        .prepare("SELECT record FROM outreach WHERE id=?")
+        .get(action.id)) as { record: string } | undefined;
+      // An older status read must not clear a contact's stop request.
+      if (previous && JSON.parse(previous.record).contactStopped)
+        action.contactStopped = true;
+      await this.store.db
+        .prepare("INSERT OR REPLACE INTO outreach VALUES(?,?,?,?,?)")
+        .run(
+          action.id,
+          action.runId,
+          action.candidateId,
+          action.state,
+          JSON.stringify(action),
+        );
+      await this.store.db
+        .prepare("INSERT OR REPLACE INTO outreach_owners VALUES(?,?)")
+        .run(action.id, this.userId);
+      return action;
+    });
   }
   async get(id: string): Promise<OutreachAction> {
     const row = (await this.store.db
@@ -112,13 +121,20 @@ export class OutreachService {
           ? "follow_up"
           : value.kind === "email"
             ? "email"
-            : undefined;
+            : value.kind === "reply"
+              ? "reply"
+              : undefined;
     if (!kind) throw new ActionError(400, "Choose a message or a meeting invitation.");
     const subject = text(value.subject, 180);
     if (/[\r\n]/.test(subject))
       throw new ActionError(400, "The subject must be one line.");
     const body = text(value.text, 10_000),
       history = await this.list(runId, candidateId);
+    if (history.some((item) => item.contactStopped))
+      throw new ActionError(
+        409,
+        "This contact declined further outreach. No new message or invitation was prepared.",
+      );
     if (
       history.some(
         (action) =>
@@ -164,7 +180,7 @@ export class OutreachService {
       if (root.receivedReply)
         throw new ActionError(
           409,
-          "A reply was received. Read it in Gmail and respond personally; the unanswered-message follow-up has been stopped.",
+          "A reply was received. Open the conversation to prepare a response; the unanswered-message follow-up has been stopped.",
         );
       const count = history.filter(
         (item) => item.kind === "follow_up" && item.state === "sent",
@@ -184,6 +200,52 @@ export class OutreachService {
           409,
           `This follow-up is due after ${new Date(due).toISOString()}. Its text can be reviewed now, but it is not due to send.`,
         );
+    }
+    if (kind === "reply") {
+      const rootId = text(value.parentId, 80),
+        conversation = await this.conversation(rootId);
+      const root = await this.get(rootId);
+      if (
+        root.runId !== runId ||
+        root.candidateId !== candidateId ||
+        root.recipient !== recipient ||
+        !conversation.canReply ||
+        conversation.stopped ||
+        !conversation.latestIncoming ||
+        conversation.latestIncoming.id !== value.replyToMessageId
+      )
+        throw new ActionError(
+          409,
+          "The conversation changed. Read its latest reply before preparing a response.",
+        );
+      action.terms = offerTerms(value.terms);
+      checkReplyPrice(body, action.terms);
+      action.parentId = rootId;
+      action.threadId = conversation.threadId;
+      action.replyToMessageId = conversation.latestIncoming.id;
+      action.replyRfcMessageId = conversation.latestIncoming.rfcMessageId;
+      if (!action.replyRfcMessageId)
+        throw new ActionError(
+          409,
+          "The reply has no usable Message-ID. Respond in Gmail for this conversation.",
+        );
+      action.subject = root.subject;
+      action.id = createHash("sha256")
+        .update(JSON.stringify([this.userId, action.threadId, action.replyToMessageId]))
+        .digest("hex")
+        .slice(0, 32);
+      // One durable reply identity across tabs, workers and repeat previews.
+      return this.store.db.transaction(async () => {
+        const existing = (await this.store.db
+          .prepare("SELECT state FROM outreach WHERE id=?")
+          .get(action.id)) as { state: string } | undefined;
+        if (existing && !["cancelled", "failed"].includes(existing.state))
+          throw new ActionError(
+            409,
+            "This reply already has a preview or delivery. Review its status first.",
+          );
+        return this.persist(action);
+      });
     }
     if (kind === "meeting") {
       const start = text(value.start, 60),
@@ -219,6 +281,76 @@ export class OutreachService {
     if (!candidate.name)
       throw new ActionError(409, "The business identity needs another check.");
     return await this.persist(action);
+  }
+  async conversation(id: string): Promise<Conversation> {
+    const root = await this.get(id);
+    if (root.kind !== "email" || root.state !== "sent" || !root.threadId)
+      throw new ActionError(
+        409,
+        "Open a confirmed introduction to read its conversation.",
+      );
+    await this.lead(root.runId, root.candidateId);
+    if (root.sender !== (await this.google.status()).email)
+      throw new ActionError(
+        409,
+        "Reconnect the Gmail account used for this conversation.",
+      );
+    const raw = await this.google.request(
+      `/gmail/v1/users/me/threads/${encodeURIComponent(root.threadId)}?format=full&fields=id,messages(id,internalDate,labelIds,payload)`,
+    );
+    if (!Array.isArray(raw.messages) || raw.messages.length > 100)
+      throw new ActionError(409, "Open this long conversation in Gmail.");
+    const messages: ThreadMessage[] = [];
+    for (const item of raw.messages.slice(-12)) {
+      if (
+        !item ||
+        typeof item !== "object" ||
+        typeof item.id !== "string" ||
+        item.labelIds?.includes("DRAFT")
+      )
+        continue;
+      const headers: { name: string; value: string }[] = Array.isArray(
+        item.payload?.headers,
+      )
+        ? item.payload.headers
+        : [];
+      const header = (name: string) =>
+        headers.find((h) => h.name?.toLowerCase() === name)?.value ?? "";
+      const from = header("from").match(/<([^>]+)>/)?.[1] ?? header("from").trim();
+      const address = from.toLowerCase();
+      const rfc = header("message-id"),
+        stamp = Number(item.internalDate);
+      messages.push({
+        id: item.id,
+        from: address,
+        ...messageText(item.payload ?? {}),
+        sentAt:
+          Number.isFinite(stamp) && stamp > 0 && stamp < 8640000000000000
+            ? new Date(stamp).toISOString()
+            : undefined,
+        rfcMessageId: /^<[^\r\n<>]{1,250}>$/.test(rfc) ? rfc : undefined,
+      });
+    }
+    const latestIncoming = messages.findLast((m) => m.from === root.recipient);
+    const latest = messages.at(-1);
+    const stopped =
+      !!root.contactStopped || (!!latestIncoming && declined(latestIncoming.text));
+    if (stopped && !root.contactStopped) {
+      root.contactStopped = true;
+      await this.persist(root);
+    }
+    return {
+      rootId: root.id,
+      threadId: root.threadId,
+      recipient: root.recipient,
+      subject: root.subject,
+      messages: messages.filter(
+        (m) => m.from === root.sender || m.from === root.recipient,
+      ),
+      latestIncoming,
+      canReply: !!latestIncoming && latest?.id === latestIncoming.id && !stopped,
+      stopped,
+    };
   }
   async availableSlots(value: Json) {
     await this.lead(text(value.runId, 80), text(value.candidateId, 100));
@@ -334,8 +466,8 @@ export class OutreachService {
     ];
     if (parent)
       headers.push(
-        `In-Reply-To: ${parent.rfcMessageId || `<${parent.id}@quil.local>`}`,
-        `References: ${parent.rfcMessageId || `<${parent.id}@quil.local>`}`,
+        `In-Reply-To: ${action.replyRfcMessageId || parent.rfcMessageId || `<${parent.id}@quil.local>`}`,
+        `References: ${action.replyRfcMessageId || parent.rfcMessageId || `<${parent.id}@quil.local>`}`,
       );
     const encoded =
       Buffer.from(action.text)
@@ -376,6 +508,14 @@ export class OutreachService {
       throw new ActionError(409, "This preview is already being processed.");
     let issued = false;
     try {
+      const stopped = (await this.list(action.runId, action.candidateId)).some(
+        (item) => item.contactStopped,
+      );
+      if (stopped)
+        throw new ActionError(
+          409,
+          "This contact declined further outreach. Nothing was sent.",
+        );
       if (action.kind === "meeting") {
         await this.checkFree(action);
         issued = true;
@@ -412,7 +552,19 @@ export class OutreachService {
         action.attendance = "needsAction";
       } else {
         const parent = action.parentId ? await this.sync(action.parentId) : undefined;
-        if (parent?.receivedReply)
+        if (action.kind === "reply") {
+          const conversation = await this.conversation(action.parentId!);
+          if (
+            !conversation.canReply ||
+            conversation.latestIncoming?.id !== action.replyToMessageId
+          )
+            throw new ActionError(
+              409,
+              "A new message arrived or this conversation changed. Prepare a fresh reply.",
+            );
+          checkReplyPrice(action.text, action.terms);
+        }
+        if (action.kind === "follow_up" && parent?.receivedReply)
           throw new ActionError(
             409,
             "A reply has arrived. The unanswered-message follow-up was stopped.",
@@ -455,6 +607,7 @@ export class OutreachService {
   }
   async sync(id: string): Promise<OutreachAction> {
     const action = await this.get(id);
+    if (!["sent", "uncertain"].includes(action.state)) return action;
     if (action.sender !== (await this.google.status()).email)
       throw new ActionError(409, "Reconnect the Gmail account used for this item.");
     if (
@@ -498,7 +651,12 @@ export class OutreachService {
           `/gmail/v1/users/me/threads/${encodeURIComponent(action.threadId)}?format=metadata&metadataHeaders=From&metadataHeaders=Message-ID&fields=id,messages(id,payload(headers))`,
         );
         const messages = (thread.messages as Message[] | undefined) ?? [];
-        action.receivedReply = messages.some((message) => {
+        const sentIndex = messages.findIndex(
+          (message) => message.id === action.messageId,
+        );
+        const received = (
+          sentIndex >= 0 ? messages.slice(sentIndex + 1) : messages
+        ).filter((message) => {
           const from =
             message.payload?.headers?.find(
               (header) => header.name.toLowerCase() === "from",
@@ -506,6 +664,8 @@ export class OutreachService {
           const address = from.match(/<([^>]+)>/)?.[1] ?? from.trim();
           return address.toLowerCase() !== action.sender?.toLowerCase();
         });
+        action.receivedReply = received.length > 0;
+        action.lastReplyId = received.at(-1)?.id;
         const sent = messages.find((message) => message.id === action.messageId);
         const messageId = sent?.payload?.headers?.find(
           (header) => header.name.toLowerCase() === "message-id",

@@ -13,7 +13,7 @@ import type { CreatedRun, RunSnapshot } from "../../shared/mission.ts";
 const connectionString = process.env.QUIL_TEST_DATABASE_URL || process.env.DATABASE_URL;
 test(
   "Neon keeps OAuth, runs, controls, private saved items and atomic budgets across independent instances",
-  { skip: !connectionString, timeout: 120_000 },
+  { skip: !connectionString, timeout: 180_000 },
   async () => {
     const namespace = `quil_test_${randomBytes(6).toString("hex")}`;
     const storeA = new Store(".quil-data/postgres-tests", connectionString, namespace),
@@ -68,6 +68,37 @@ test(
               await delay(150);
               return Response.json({ id: "fixture-message", threadId: "fixture-thread" });
             }
+            if (String(url).includes("/threads/fixture-thread"))
+              return Response.json({
+                messages: [
+                  {
+                    id: "fixture-message",
+                    payload: {
+                      mimeType: "text/plain",
+                      headers: [
+                        { name: "From", value: `${id}@example.test` },
+                        { name: "Message-ID", value: "<fixture@example.test>" },
+                      ],
+                      body: {
+                        data: Buffer.from("Our introduction").toString("base64url"),
+                      },
+                    },
+                  },
+                  {
+                    id: "owner-reply",
+                    payload: {
+                      mimeType: "text/plain",
+                      headers: [
+                        { name: "From", value: "owner@example.test" },
+                        { name: "Message-ID", value: "<reply@owner.test>" },
+                      ],
+                      body: {
+                        data: Buffer.from("Could you do USD 450?").toString("base64url"),
+                      },
+                    },
+                  },
+                ],
+              });
             if (String(url).endsWith("/revoke")) return Response.json({});
             throw Error("Unexpected external operation in an isolated database test");
           },
@@ -253,6 +284,57 @@ test(
       ]);
       assert.deepEqual(approvals.map((r) => r.status).sort(), [200, 409]);
       assert.equal(sends, 1);
+
+      assert.equal(
+        (await bob.request(`/api/outreach/${action.id}/thread`, "POST", {}, 1)).status,
+        404,
+      );
+      const conversation = await alice.request(
+        `/api/outreach/${action.id}/thread`,
+        "POST",
+        {},
+        1,
+      );
+      assert.equal(conversation.status, 200);
+      assert.equal(
+        (await conversation.json()).conversation.latestIncoming.id,
+        "owner-reply",
+      );
+      const replyInput = {
+        runId: run.id,
+        candidateId: "fern",
+        kind: "reply",
+        parentId: action.id,
+        replyToMessageId: "owner-reply",
+        recipient: "owner@example.test",
+        recipientConfirmed: true,
+        subject: action.subject,
+        text: "The proposed fee is USD 450.",
+        terms: {
+          currency: "USD",
+          price: "500",
+          minimum: "400",
+          scope: "One booking page",
+          deliveryDays: 10,
+        },
+      };
+      const previews = await Promise.all([
+        alice.request("/api/outreach/prepare", "POST", replyInput),
+        alice.request("/api/outreach/prepare", "POST", replyInput, 1),
+      ]);
+      assert.deepEqual(previews.map((r) => r.status).sort(), [201, 409]);
+      const preview = (await previews.find((r) => r.status === 201)!.json()).action;
+      const sentReply = await Promise.all([
+        alice.request(`/api/outreach/${preview.id}/approve`, "POST", { approved: true }),
+        alice.request(
+          `/api/outreach/${preview.id}/approve`,
+          "POST",
+          { approved: true },
+          1,
+        ),
+      ]);
+      assert.deepEqual(sentReply.map((r) => r.status).sort(), [200, 409]);
+      assert.equal(sends, 2);
 
       const now = new Date().toISOString();
       const budgetRun: RunSnapshot = {

@@ -71,6 +71,8 @@ The crew works through **Mozaik**, sharing findings and responding when another 
 | Tailored offers | Prepares an editable rationale, proposed scope, commercial terms to complete and a personal introduction. |
 | Gmail outreach | Previews and sends messages through your connected Gmail account after approval. |
 | Follow-ups | Prepares day-3 and day-7 messages and checks the conversation for replies before sending. |
+| Reply assistance | Reads the selected conversation, identifies the latest reply and prepares a reviewed response. |
+| Offer boundaries | Handles counteroffers within your quote, minimum price, scope and delivery terms. |
 | Meetings | Suggests times from your calendar, prepares an agenda, creates approved invitations and checks attendee responses. |
 | Private workspaces | Keeps research, saved opportunities and Google connections with their signed-in account. |
 | Saved prospects | Preserves edited drafts and evidence across sessions, with CSV export. |
@@ -241,6 +243,12 @@ Connect Gmail and Calendar from the envelope button. Under **Contact & next step
 
 Public website email links are offered when available. Follow-ups become eligible on day 3 and day 7, with a fresh review before each send. Quil checks the created Gmail thread for replies and stops the unanswered follow-up sequence when someone responds.
 
+### Continue the conversation
+
+After an introduction is sent, open **The conversation ? Read conversation**. Review the latest messages, enter your scope, currency, quote, minimum price and delivery time, then choose **Prepare a response**. Wren prepares the response and Iris checks its source and price boundaries. **Edit this reply** transfers it into the message composer for your review and approval.
+
+A counteroffer within your limits can be reflected in the proposed fee. Lower offers retain your minimum; requests to stop contact halt further outreach. Before sending, Quil checks that the response still addresses the latest message. Explicit future meeting timestamps can prefill the calendar form for review.
+
 ### Arrange a meeting
 
 Choose a time agreed with the prospect or request suggestions from your calendar. Review the attendee, timezone, duration and agenda before approving the invitation. Quil rechecks calendar availability before creation; **Check status** retrieves the attendee's response.
@@ -268,6 +276,8 @@ The application uses same-origin JSON endpoints under `/api`, with HttpOnly sess
 | POST | `/api/google/{connect,disconnect}` | Authorize or disconnect Gmail and Calendar. |
 | GET | `/api/google/callback` | Complete Google service authorization. |
 | GET | `/api/outreach` | Retrieve the workspace's outreach records. |
+| POST | `/api/outreach/:id/thread` | Read the selected introduction?s conversation. |
+| POST | `/api/outreach/:id/draft-reply` | Prepare a response within user-supplied offer terms. |
 | POST | `/api/outreach/prepare` | Persist a message or meeting approval preview. |
 | POST | `/api/outreach/slots` | Suggest available meeting times. |
 | POST | `/api/outreach/:id/{approve,sync,cancel}` | Execute, reconcile or cancel a prepared action. |
@@ -368,6 +378,7 @@ quil/
 | --- | --- |
 | [Accounts](docs/ACCOUNTS.md) | Google sign-in, private workspaces and account configuration. |
 | [Gmail and Calendar](docs/GOOGLE-SETUP.md) | OAuth setup, permissions and the outreach workflow. |
+| [Replies and offer terms](docs/REPLIES.md) | Conversation reading, bounded counteroffers and meeting handoff. |
 | [Vercel and Neon](docs/VERCEL-SETUP.md) | Production hosting, environment variables and callbacks. |
 | [Deployment verification](docs/vercel-neon-check.md) | PostgreSQL, Google transport and deployed-browser checks. |
 | [Outreach verification](docs/outreach-check.md) | Approval, delivery and calendar test coverage. |
@@ -379,7 +390,7 @@ quil/
 
 Research, saved prospects, Google credentials and outreach records are scoped to the signed-in account. Sessions use HttpOnly, SameSite cookies, with Secure cookies on the hosted app. Run tokens and session tokens are stored as hashes. Google authorization uses single-use state, nonce and PKCE.
 
-Google credentials are encrypted server-side with account-bound authenticated encryption. Gmail thread checks retrieve reply metadata for Quil's conversations. Provider keys, databases, private captures and local runtime artifacts are excluded from Git. Keep service credentials in server environment variables.
+Google credentials are encrypted server-side with account-bound authenticated encryption. Gmail thread checks retrieve reply metadata for Quil?s conversations. Opening a conversation reads bounded message text; requested intent analysis shares selected reply text with OpenAI. Minimum prices remain in local application logic. Provider keys, databases, private captures and local runtime artifacts are excluded from Git. Keep service credentials in server environment variables.
 
 The public [privacy notice](https://quil-xx.vercel.app/privacy.html) describes stored information and provider interactions.
 

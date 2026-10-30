@@ -7,7 +7,7 @@ import type { Store } from "./store.ts";
 export async function crewAction<T>(
   store: Store,
   runId: string,
-  role: "wren" | "quil",
+  role: "wren" | "quil" | "iris",
   task: string,
   work: () => Promise<T>,
 ): Promise<T> {
@@ -43,9 +43,11 @@ export async function crewAction<T>(
   const agent = await module.createAgent({
     name: role,
     instruction:
-      role === "wren"
-        ? "Prepare the requested outreach preview from approved research. Do not send it."
-        : "Carry out only the exact user-approved action. Do not retry an uncertain send.",
+      role === "iris"
+        ? "Review the reply against the recorded conversation and user-supplied offer boundaries."
+        : role === "wren"
+          ? "Prepare the requested outreach preview from approved research. Do not send it."
+          : "Carry out only the exact user-approved action. Do not retry an uncertain send.",
     tools: [],
   });
   const loop = await module.createLoop({

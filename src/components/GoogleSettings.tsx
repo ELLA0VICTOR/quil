@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  googleStatus,
-  connectGoogle,
-  disconnectGoogle,
-} from "../lib/outreach-api";
+import { googleStatus, connectGoogle, disconnectGoogle } from "../lib/outreach-api";
 import type { GoogleStatus } from "../../shared/outreach";
 import { useAccount } from "../hooks/useAccount";
 
@@ -48,27 +44,29 @@ export default function GoogleSettings() {
           : "Connect your account to send reviewed messages and meeting invitations."}
       </p>
       <p>
-        Quil checks metadata in its own email threads for replies. You approve
-        each send and invitation. Follow-ups are prepared for day 3 and day 7,
-        and stop when a reply appears.
+        Quil checks its own email threads for replies. Open a conversation to read the
+        messages and prepare a response within your offer terms. You approve each send and
+        invitation. Follow-ups are prepared for day 3 and day 7, and stop when a reply
+        appears.
       </p>
       {status && !status.configured && session?.development && (
         <div className="google-setup">
           <p>
-            Google setup is needed once. Create a Google OAuth web client with
-            Gmail API and Calendar API enabled. The walkthrough is in{" "}
+            Google setup is needed once. Create a Google OAuth web client with Gmail API
+            and Calendar API enabled. The walkthrough is in{" "}
             <code>docs/GOOGLE-SETUP.md</code>.
           </p>
           <p>
-            Add <code>GOOGLE_CLIENT_ID</code> and{" "}
-            <code>GOOGLE_CLIENT_SECRET</code> to your local .env, then restart
-            the API.
+            Add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> to
+            your local .env, then restart the API.
           </p>
           <p>Authorized redirect URI:</p>
           <code>{status.redirectUri}</code>
         </div>
       )}
-      {status && !status.configured && !session?.development && <p>Google connections are temporarily unavailable. Please try again later.</p>}
+      {status && !status.configured && !session?.development && (
+        <p>Google connections are temporarily unavailable. Please try again later.</p>
+      )}
       {status?.connected ? (
         <button
           className="text-link"

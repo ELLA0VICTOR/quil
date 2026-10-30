@@ -1,4 +1,9 @@
-import type { GoogleStatus, OutreachAction } from "../../shared/outreach.ts";
+import type {
+  Conversation,
+  GoogleStatus,
+  OutreachAction,
+  ReplyPlan,
+} from "../../shared/outreach.ts";
 import { workspaceHeaders } from "./session-api";
 
 async function request<T>(path: string, body?: unknown): Promise<T> {
@@ -12,11 +17,11 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
           headers: {
             "Content-Type": "application/json",
             "X-Quil-Action": "review",
-              ...workspaceHeaders(),
+            ...workspaceHeaders(),
           },
           body: JSON.stringify(body),
         }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(path.endsWith("/draft-reply") ? 60_000 : 30_000),
   });
   const value = await response.json();
   if (!response.ok)
@@ -27,10 +32,8 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   return value;
 }
 export const googleStatus = () => request<GoogleStatus>("/api/google/status");
-export const connectGoogle = () =>
-  request<{ url: string }>("/api/google/connect", {});
-export const disconnectGoogle = () =>
-  request<GoogleStatus>("/api/google/disconnect", {});
+export const connectGoogle = () => request<{ url: string }>("/api/google/connect", {});
+export const disconnectGoogle = () => request<GoogleStatus>("/api/google/disconnect", {});
 export const listOutreach = (runId: string, candidateId: string) =>
   request<{ actions: OutreachAction[] }>(
     `/api/outreach?${new URLSearchParams({ runId, candidateId })}`,
@@ -42,11 +45,12 @@ export const meetingSlots = (value: unknown) =>
     "/api/outreach/slots",
     value,
   );
-export const outreachAction = (
-  id: string,
-  operation: "approve" | "sync" | "cancel",
-) =>
+export const outreachAction = (id: string, operation: "approve" | "sync" | "cancel") =>
   request<{ action: OutreachAction }>(
     `/api/outreach/${id}/${operation}`,
     operation === "approve" ? { approved: true } : {},
   );
+export const readConversation = (id: string) =>
+  request<{ conversation: Conversation }>(`/api/outreach/${id}/thread`, {});
+export const draftReply = (id: string, terms?: unknown) =>
+  request<{ plan: ReplyPlan }>(`/api/outreach/${id}/draft-reply`, { terms });

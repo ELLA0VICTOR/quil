@@ -582,7 +582,8 @@
   padding-top: 22px;
   margin-top: 22px;
 }
-.outreach-compose > label {
+.outreach-compose > label,
+.reply-terms label {
   display: grid;
   gap: 7px;
   margin-bottom: 18px;
@@ -590,7 +591,10 @@
 }
 .outreach-compose input:not([type="checkbox"]),
 .outreach-compose textarea,
-.outreach-compose select {
+.outreach-compose select,
+.reply-terms input,
+.reply-terms textarea,
+.reply-terms select {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -657,6 +661,31 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+.reply-assistant {
+  margin-top: 22px;
+  padding-block: 22px;
+  border-block: 1px solid #ffffff25;
+  color: #f1f4f9;
+}
+.reply-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reply-messages details { padding: 12px 0; }
+.reply-messages summary, .reply-terms summary { cursor: pointer; }
+.reply-messages summary strong { margin-right: 16px; }
+.reply-messages time { color: #a4b3c8; font-size: 11px; }
+.reply-messages summary span { display: block; margin-top: 5px; color: #c2cede; }
+.reply-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply-terms { border-top: 1px solid #ffffff20; padding-top: 16px; margin: 16px 0; }
+.reply-term-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.reply-plan { padding-top: 16px; }
+.reply-plan blockquote { margin: 0; padding-left: 15px; border-left: 1px solid #ffffff50; color: #c2cede; }
+.reply-plan > button { margin: 8px 20px 0 0; }
+@media (max-width: 460px) { .reply-term-fields { grid-template-columns: 1fr; } }
 .meeting-slots {
   display: flex;
   flex-wrap: wrap;
