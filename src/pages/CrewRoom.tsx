@@ -4,6 +4,7 @@ import { Brand, Sheet } from "../components/Shared";
 import { Icon } from "../components/Icon";
 import AgentSprite from "../components/AgentSprite";
 import CrewScene from "../components/CrewScene";
+import CrewActivity from "../components/CrewActivity";
 import CrewExchange from "../components/CrewExchange";
 import ProspectEntry from "../components/ProspectEntry";
 import { crew } from "../data/crew";
@@ -84,16 +85,14 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
         latest.status !== "failed"
       )
         return;
-      const target = latest.outcome
-        ? exchange?.querySelector(".shared-outcome")
-        : exchange;
+      const target = exchange;
       if (target)
         element.scrollTo({
           top:
             element.scrollTop +
             target.getBoundingClientRect().top -
             element.getBoundingClientRect().top -
-            (latest.outcome ? 70 : 18),
+            8,
           behavior: "instant",
         });
     } else
@@ -412,7 +411,36 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
           <h1 className="sr-only">Your conversation with the Quil crew</h1>
         )}
         <div className="room-crew-area">
-          <CrewScene phase={phase} onMeet={meet} />
+          {session.lastMission ? (
+            <CrewActivity
+              mission={session.lastMission}
+              onMeet={meet}
+              controls={
+                session.hasActive ? (
+                  <div className="mission-controls">
+                    {paused && (
+                      <button
+                        className="resume-mission"
+                        disabled={busy}
+                        onClick={() => void session.control("resume")}
+                      >
+                        Continue the search <Icon name="arrow" size={14} />
+                      </button>
+                    )}
+                    <button
+                      className="cancel-mission"
+                      disabled={busy}
+                      onClick={() => void session.control("cancel")}
+                    >
+                      Cancel search <Icon name="close" size={12} />
+                    </button>
+                  </div>
+                ) : undefined
+              }
+            />
+          ) : (
+            <CrewScene phase={phase} onMeet={meet} />
+          )}
         </div>
         <div
           className="room-conversation"
@@ -455,8 +483,6 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
                         id={item.id}
                         request={item.request}
                         phase={phaseFor(item)}
-                        notes={item.notes}
-                        activity={item.activity}
                         mode={item.mode}
                         location={item.location}
                         status={item.status}
@@ -523,26 +549,6 @@ export default function CrewRoom({ goHome }: { goHome: () => void }) {
           )}
         </div>
         <div className="room-composer-area">
-          {session.hasActive && (
-            <div className="mission-controls">
-              {paused && (
-                <button
-                  className="resume-mission"
-                  disabled={busy}
-                  onClick={() => void session.control("resume")}
-                >
-                  Continue the search <Icon name="arrow" size={14} />
-                </button>
-              )}
-              <button
-                className="cancel-mission"
-                disabled={busy}
-                onClick={() => void session.control("cancel")}
-              >
-                Cancel search <Icon name="close" size={12} />
-              </button>
-            </div>
-          )}
           {!session.items.length && (
             <button className="try-mission" disabled={busy} onClick={startExample}>
               <Icon name="spark" size={13} /> Or try a little example{" "}

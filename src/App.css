@@ -2,6 +2,7 @@
 @import "./styles/room.css";
 @import "./styles/exchange.css";
 @import "./styles/conversation.css";
+@import "./styles/workspace.css";
 
 .button {
   display: inline-flex;

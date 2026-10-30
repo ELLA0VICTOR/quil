@@ -38,9 +38,6 @@
 .has-mission .room-crew-area {
   display: block;
 }
-.has-mission .agent-contribution > .agent-sprite {
-  display: none;
-}
 .chat-composer {
   border: 1px solid #ffffff20;
   border-radius: 28px;

@@ -293,6 +293,7 @@ try {
     (await evaluate(
       "document.querySelector('.crew-exchange')?.dataset.status==='paused'",
     ));
+  await evaluate("window.__sawLiveCrew=false;window.__crewObserver=setInterval(()=>{if(document.querySelector('.crew-activity-live .agent-contribution[data-state=working] .agent-sprite'))window.__sawLiveCrew=true},10)");
   await click(".resume-mission");
   for (let i = 0; i < 100; i++) {
     if (
@@ -307,7 +308,7 @@ try {
     `(async()=>{const saved=JSON.parse(sessionStorage.getItem('quil:'+window.__quilQaUserId+':active-run'));const response=await fetch('/api/runs/'+saved.run.id,{headers:{Authorization:'Bearer '+saved.accessToken}});const {run,usage}=await response.json();return run.status==='completed'&&run.mode==='fixture'&&usage.length===0&&document.querySelector('.answer-prose p').textContent===run.outcome.text&&document.querySelector('.crew-exchange').dataset.missionId===run.id})()`,
   );
   const mission = await evaluate(
-    `({phase:document.querySelector('.crew-scene-room').dataset.phase,leads:document.querySelectorAll('.conversation-results .lead-entry').length,review:document.querySelector('.conversation-messages').textContent.includes('withdrawn'),exampleLabel:document.querySelector('.results-note').textContent.includes('FICTIONAL')})`,
+    `({phase:document.querySelector('.crew-activity-live').dataset.phase,leads:document.querySelectorAll('.conversation-results .lead-entry').length,review:document.querySelector('.conversation-messages').textContent.includes('withdrawn'),exampleLabel:document.querySelector('.results-note').textContent.includes('FICTIONAL')})`,
   );
   const compactAnswer = await evaluate("!document.querySelector('details.crew-activity')&&!!document.querySelector('[aria-label=\"Copy answer\"]')&&getComputedStyle(document.querySelector('.exchange-brief')).borderLeftWidth==='0px'");
   await screenshot("53-clean-conversation-answer");
@@ -328,11 +329,31 @@ try {
       primaryLeads:document.querySelectorAll('.conversation-results > .lead-entry').length,
       detailsClosed:!document.querySelector('.reviewed-others').open,
       resultVisible:document.querySelector('.shared-outcome').getBoundingClientRect().top>=document.querySelector('.room-conversation').getBoundingClientRect().top,
-      persistentCrewVisible:getComputedStyle(document.querySelector('.room-crew-area')).display!=='none'&&document.querySelectorAll('.room-crew-area .crew-member').length===5&&document.querySelector('.room-crew-area').getBoundingClientRect().bottom<=document.querySelector('.room-conversation').getBoundingClientRect().top
+      persistentCrewVisible:document.querySelectorAll('.room-crew-area .agent-contribution').length===5&&document.querySelector('.room-crew-area').getBoundingClientRect().bottom<=document.querySelector('.room-conversation').getBoundingClientRect().top
       ,singleResponse:!document.querySelector('.outcome-summary')&&!document.querySelector('.lead-answer .lead-entry-top')&&!!document.querySelector('.answer-prose')
       ,unifiedAnswerColor:new Set([...document.querySelectorAll('.shared-outcome p,.shared-outcome span,.shared-outcome button,.shared-outcome h2,.shared-outcome summary')].map(el=>getComputedStyle(el).color)).size===1
     };
   })()`);
+  const liveCrewObserved = await evaluate("(()=>{clearInterval(window.__crewObserver);return window.__sawLiveCrew})()");
+  const simultaneousView = [];
+  for (const [width,height] of [[1366,768],[960,540],[390,844],[375,568]]) {
+    await send("Emulation.setDeviceMetricsOverride", {width,height,deviceScaleFactor:1,mobile:width<600});
+    await wait(150);
+    simultaneousView.push(await evaluate(`(()=>{
+      const f=document.querySelector('.room-conversation').getBoundingClientRect(),
+        p=document.querySelector('.exchange-brief').getBoundingClientRect(),
+        a=document.querySelector('.answer-prose').getBoundingClientRect(),
+        c=document.querySelector('.crew-activity-live').getBoundingClientRect();
+      return {width:innerWidth,height:innerHeight,requestVisible:p.top>=f.top-1&&p.bottom<=f.bottom+1,
+        answerStartsVisible:a.top>=f.top&&a.top<f.bottom,answerFits:a.bottom<=f.bottom+1,
+        crewVisible:c.top>=0&&c.bottom<=f.top,
+        avatarsFit:[...document.querySelectorAll('.crew-live-person')].every(e=>{const r=e.getBoundingClientRect();return r.top>=c.top&&r.bottom<=c.bottom}),
+        overflow:document.documentElement.scrollWidth>innerWidth};
+    })()`));
+    if (width===960 || width===375) await screenshot(`56-simultaneous-workspace-${width}`);
+  }
+  await send("Emulation.setDeviceMetricsOverride",{width:1440,height:960,deviceScaleFactor:1,mobile:false});
+  await wait(150);
   await screenshot("17-conversation-results");
   await evaluate(
     "(()=>{const feed=document.querySelector('.room-conversation');const exchange=document.querySelector('.crew-exchange');feed.scrollTo({top:feed.scrollTop+exchange.getBoundingClientRect().top-feed.getBoundingClientRect().top-20,behavior:'instant'})})()",
@@ -461,7 +482,7 @@ try {
   });
   await wait(150);
   const mobileRoom = await evaluate(
-    `({overflow:document.documentElement.scrollWidth>innerWidth,composer:document.querySelector('.chat-composer').getBoundingClientRect().bottom<=innerHeight,agents:document.querySelectorAll('.room-crew-area .crew-member').length})`,
+    `({overflow:document.documentElement.scrollWidth>innerWidth,composer:document.querySelector('.chat-composer').getBoundingClientRect().bottom<=innerHeight,agents:document.querySelectorAll('.room-crew-area .agent-contribution').length})`,
   );
   await screenshot("19-mobile-conversation");
   await evaluate(
@@ -665,6 +686,8 @@ try {
     paused,
     mission,
     exchange,
+    liveCrewObserved,
+    simultaneousView,
     compactAnswer,
     savedReadability,
     savedRemoval,
@@ -743,6 +766,8 @@ try {
     !exchange.detailsClosed ||
     !exchange.resultVisible ||
     !exchange.persistentCrewVisible ||
+    !liveCrewObserved ||
+    simultaneousView.some(view=>!view.requestVisible||!view.answerStartsVisible||!view.crewVisible||!view.avatarsFit||view.overflow||(view.width>600&&!view.answerFits)) ||
     !mobileSaved.fits ||
     !mobileSaved.remove ||
     !savedRemoval ||
