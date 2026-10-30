@@ -3,22 +3,13 @@ import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { resolve, join, sep } from "node:path";
-import {
-  investigateWebsite,
-  publicAddress,
-  loadPublicPage,
-} from "../website.ts";
+import { investigateWebsite, publicAddress, loadPublicPage } from "../website.ts";
 import { developOffer } from "../../shared/offers.ts";
 import { LiveProvider, FixtureProvider } from "../providers.ts";
 import { MissionEngine } from "../engine.ts";
 import { readConfig } from "../config.ts";
 import { Store } from "../store.ts";
-import type {
-  Brief,
-  Candidate,
-  Decision,
-  RunSnapshot,
-} from "../../shared/mission.ts";
+import type { Brief, Candidate, Decision, RunSnapshot } from "../../shared/mission.ts";
 
 const candidate: Candidate = {
   id: "one",
@@ -170,7 +161,7 @@ test("actual Mozaik agents overlap, revisit late website evidence and withdraw t
     createdAt: now,
     updatedAt: now,
   };
-  store.createRun(run, "test");
+  await store.createRun(run, "test");
   const engine = new MissionEngine(run, store, {
     execute: async (agent, input, signal) => {
       if (agent === "pip")
@@ -230,12 +221,11 @@ test("actual Mozaik agents overlap, revisit late website evidence and withdraw t
     assert.equal(run.status, "completed", run.error);
     assert.equal(run.outcome!.decisions[0].verdict, "uncertain");
     assert.equal(run.outcome!.drafts.length, 0);
-    const events = store.events(run.id);
+    const events = await store.events(run.id);
     assert.ok(events.some((event) => event.type === "draft.invalidated"));
     assert.equal(
-      events.filter(
-        (event) => event.agent === "iris" && event.type === "agent.completed",
-      ).length,
+      events.filter((event) => event.agent === "iris" && event.type === "agent.completed")
+        .length,
       2,
     );
     assert.equal(
@@ -249,15 +239,13 @@ test("actual Mozaik agents overlap, revisit late website evidence and withdraw t
     const started = (agent: string) =>
       Date.parse(
         events.find(
-          (event) =>
-            event.type === "operation.started" && event.agent === agent,
+          (event) => event.type === "operation.started" && event.agent === agent,
         )!.at,
       );
     const completed = (agent: string) =>
       Date.parse(
         events.find(
-          (event) =>
-            event.type === "operation.completed" && event.agent === agent,
+          (event) => event.type === "operation.completed" && event.agent === agent,
         )!.at,
       );
     assert.ok(
@@ -265,9 +253,9 @@ test("actual Mozaik agents overlap, revisit late website evidence and withdraw t
         Math.max(started("milo"), started("iris")) >=
         0,
     );
-    assert.deepEqual(store.usage(run.id), []);
+    assert.deepEqual(await store.usage(run.id), []);
   } finally {
-    store.close();
+    await store.close();
     assert.ok(resolve(directory).startsWith(root + sep));
     rmSync(directory, {
       recursive: true,

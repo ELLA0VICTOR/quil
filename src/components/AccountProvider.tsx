@@ -22,6 +22,9 @@ function migrateBrowser(session: SessionView) {
     for (const [storage, suffix] of [[localStorage,"saved:v3"], [sessionStorage,"active-run"], [sessionStorage,"pending-brief"]] as const) { const value = storage.getItem(`quil:${from}:${suffix}`); if (value && !storage.getItem(`quil:${id}:${suffix}`)) storage.setItem(`quil:${id}:${suffix}`,value); }
     clearWorkspace(from);
   }
+  const previous=sessionStorage.getItem("quil:cached-workspace");
+  if(previous && previous!==id)clearWorkspace(previous);
+  sessionStorage.setItem("quil:cached-workspace",id);
 }
 export default function AccountProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionView | null>(null), [error, setError] = useState(""), [open, setOpen] = useState(false), [busy, setBusy] = useState(false);

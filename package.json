@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "node --import tsx server/index.ts",
+    "cloud:pair": "node scripts/pair-mozaik.mjs",
+    "migrate:neon": "node --import tsx scripts/migrate-neon.ts",
     "dev": "vite",
     "dev:all": "node scripts/dev.mjs",
     "dev:api": "tsx watch server/index.ts",
@@ -18,17 +21,20 @@
     "preview": "vite preview"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": "24.x"
   },
   "dependencies": {
     "@mozaik-ai/core": "4.2.0-beta.18",
+    "@vercel/functions": "3.10.5",
     "google-auth-library": "10.9.1",
+    "pg": "8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.186.1"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "@types/pg": "8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.186.0",

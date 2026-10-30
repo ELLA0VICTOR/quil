@@ -12,11 +12,7 @@ import { createApi } from "../http.ts";
 import { OpenAIJson, SerperSearch, LiveProvider } from "../providers.ts";
 import { MissionEngine } from "../engine.ts";
 import type { TaskInput } from "../providers.ts";
-import type {
-  CreatedRun,
-  RunEvent,
-  RunSnapshot,
-} from "../../shared/mission.ts";
+import type { CreatedRun, RunEvent, RunSnapshot } from "../../shared/mission.ts";
 
 const fixturesRoot = resolve(".quil-data/tests");
 mkdirSync(fixturesRoot, { recursive: true });
@@ -40,10 +36,8 @@ const liveEnv = {
 const headers = { "Content-Type": "application/json" };
 async function start(env: NodeJS.ProcessEnv = {}) {
   const directory = temporary();
-  const api = createApi(readConfig({ ...env, QUIL_DATA_DIR: directory }));
-  await new Promise<void>((resolve) =>
-    api.server.listen(0, "127.0.0.1", resolve),
-  );
+  const api = await createApi(readConfig({ ...env, QUIL_DATA_DIR: directory }));
+  await new Promise<void>((resolve) => api.server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(api.server.address() as AddressInfo).port}`;
   return {
     ...api,
@@ -70,10 +64,7 @@ async function create(base: string): Promise<CreatedRun> {
 const authorization = (run: CreatedRun) => ({
   Authorization: `Bearer ${run.accessToken}`,
 });
-async function snapshot(
-  base: string,
-  created: CreatedRun,
-): Promise<RunSnapshot> {
+async function snapshot(base: string, created: CreatedRun): Promise<RunSnapshot> {
   const response = await sessionFetch(base + `/api/runs/${created.run.id}`, {
     headers: authorization(created),
   });
@@ -123,23 +114,20 @@ test("Mozaik agents overlap, invalidate a provisional pitch and produce one revi
       "provisional writing can overlap independent review",
     );
     assert.equal(
-      new Set(
-        events.filter((e) => e.type === "agent.completed").map((e) => e.agent),
-      ).size,
+      new Set(events.filter((e) => e.type === "agent.completed").map((e) => e.agent))
+        .size,
       5,
     );
     assert.ok(
       events
         .filter((e) => e.type === "agent.completed")
         .every(
-          (e) =>
-            Array.isArray(e.data.transitions) && e.data.transitions.length >= 3,
+          (e) => Array.isArray(e.data.transitions) && e.data.transitions.length >= 3,
         ),
     );
     assert.ok(events.some((e) => e.type === "draft.invalidated"));
     assert.equal(
-      events.filter((e) => e.type === "agent.started" && e.agent === "wren")
-        .length,
+      events.filter((e) => e.type === "agent.started" && e.agent === "wren").length,
       2,
     );
     assert.deepEqual(
@@ -147,26 +135,22 @@ test("Mozaik agents overlap, invalidate a provisional pitch and produce one revi
       ["fern"],
     );
     assert.equal(
-      result.outcome?.decisions.find((d) => d.candidateId === "sunday")
-        ?.verdict,
+      result.outcome?.decisions.find((d) => d.candidateId === "sunday")?.verdict,
       "ruled_out",
     );
     assert.equal(
-      result.outcome?.decisions.find((d) => d.candidateId === "clearwell")
-        ?.verdict,
+      result.outcome?.decisions.find((d) => d.candidateId === "clearwell")?.verdict,
       "uncertain",
     );
     assert.ok(result.outcome?.sources.every((s) => s.fictional));
     assert.deepEqual(
-      api.store.usage(created.run.id),
+      await api.store.usage(created.run.id),
       [],
       "fixture work never reserves model/search spending",
     );
     assert.equal(events.filter((e) => e.type === "run.completed").length, 1);
     const cursor = events[Math.floor(events.length / 2)].id;
-    const replay = await sessionFetch(
-      api.base + created.eventsUrl + `&after=${cursor}`,
-    );
+    const replay = await sessionFetch(api.base + created.eventsUrl + `&after=${cursor}`);
     const replayed = parseEvents(await replay.text());
     assert.ok(replayed.length > 0);
     assert.ok(replayed.every((e) => e.id > cursor));
@@ -190,9 +174,8 @@ test("pause freezes publication, resume continues, and cancellation cannot later
     await delay(300);
     assert.equal((await snapshot(api.base, created)).status, "paused");
     assert.equal(
-      api.store
-        .events(created.run.id)
-        .filter((e) => e.type === "agent.completed").length,
+      (await api.store.events(created.run.id)).filter((e) => e.type === "agent.completed")
+        .length,
       0,
     );
     assert.equal((await command("resume")).status, 200);
@@ -206,7 +189,7 @@ test("pause freezes publication, resume continues, and cancellation cannot later
     await delay(350);
     assert.equal((await snapshot(api.base, second)).status, "cancelled");
     assert.equal(
-      api.store.events(second.run.id).some((e) => e.type === "run.completed"),
+      (await api.store.events(second.run.id)).some((e) => e.type === "run.completed"),
       false,
     );
   } finally {
@@ -292,32 +275,30 @@ test("reservations persist, serialize competing calls, retain unknown charges, a
   try {
     const competing = await Promise.allSettled(
       [1, 2].map(() =>
-        Promise.resolve().then(() =>
-          store.reserve("one", 60_000, "openai", config),
+        Promise.resolve().then(
+          async () => await store.reserve("one", 60_000, "openai", config),
         ),
       ),
     );
     assert.equal(competing.filter((r) => r.status === "fulfilled").length, 1);
-    store.close();
+    await store.close();
     store = new Store(directory);
-    assert.throws(
-      () => store.reserve("two", 60_000, "openai", config),
+    await assert.rejects(
+      async () => await store.reserve("two", 60_000, "openai", config),
       /usage limit/,
     );
-    assert.throws(
-      () => store.reserve("two", -1, "openai", config),
+    await assert.rejects(
+      async () => await store.reserve("two", -1, "openai", config),
       /Invalid reservation/,
     );
     const id = (
-      competing.find(
-        (r) => r.status === "fulfilled",
-      ) as PromiseFulfilledResult<string>
+      competing.find((r) => r.status === "fulfilled") as PromiseFulfilledResult<string>
     ).value;
-    assert.throws(() => store.settle(id, 60_001), /exceeded/);
-    store.settle(id, 20_000);
-    assert.ok(store.reserve("two", 60_000, "openai", config));
+    await assert.rejects(async () => await store.settle(id, 60_001), /exceeded/);
+    await store.settle(id, 20_000);
+    assert.ok(await store.reserve("two", 60_000, "openai", config));
   } finally {
-    store.close();
+    await store.close();
     remove(directory);
   }
 });
@@ -356,11 +337,7 @@ test("OpenAI transport caps output, disables storage, caches and never retries a
     await ai.call("Test", { data: "test" }, new AbortController().signal);
     assert.equal(calls, 1);
     await assert.rejects(
-      ai.call(
-        "Test",
-        { data: "x".repeat(15000) },
-        new AbortController().signal,
-      ),
+      ai.call("Test", { data: "x".repeat(15000) }, new AbortController().signal),
       /small-context/,
     );
     let failures = 0;
@@ -373,7 +350,7 @@ test("OpenAI transport caps output, disables storage, caches and never retries a
       /network timeout/,
     );
     assert.equal(failures, 1);
-    const charge = store.usage("bad")[0] as { nanoUsd: number };
+    const charge = (await store.usage("bad"))[0] as { nanoUsd: number };
     assert.ok(charge.nanoUsd > 0);
     const gated = new OpenAIJson(readConfig({}), store, "off", fetcher);
     await assert.rejects(
@@ -382,7 +359,7 @@ test("OpenAI transport caps output, disables storage, caches and never retries a
     );
     assert.equal(calls, 1);
   } finally {
-    store.close();
+    await store.close();
     remove(directory);
   }
 });
@@ -407,16 +384,13 @@ test("search caches records and enforces its independent request allowance", asy
   try {
     const search = new SerperSearch(config, store, "run", fetcher),
       signal = new AbortController().signal;
-    assert.equal(
-      (await search.search("same query", signal))[0].fictional,
-      false,
-    );
+    assert.equal((await search.search("same query", signal))[0].fictional, false);
     await search.search("same query", signal);
     assert.equal(calls, 1);
     await assert.rejects(search.search("another query", signal), /usage limit/);
     assert.equal(calls, 1);
   } finally {
-    store.close();
+    await store.close();
     remove(directory);
   }
 });
@@ -425,28 +399,19 @@ test("different observations from one URL keep distinct provenance instead of ov
   const directory = temporary(),
     store = new Store(directory);
   let count = 0;
-  const search = new SerperSearch(
-    readConfig(liveEnv),
-    store,
-    "provenance",
-    async () =>
-      Response.json({
-        organic: [
-          {
-            title: "Same business",
-            link: "https://example.com/business",
-            snippet:
-              ++count === 1
-                ? "Message us to book."
-                : "Book online with Fresha.",
-          },
-        ],
-      }),
+  const search = new SerperSearch(readConfig(liveEnv), store, "provenance", async () =>
+    Response.json({
+      organic: [
+        {
+          title: "Same business",
+          link: "https://example.com/business",
+          snippet: ++count === 1 ? "Message us to book." : "Book online with Fresha.",
+        },
+      ],
+    }),
   );
   try {
-    const first = (
-      await search.search("discovery", new AbortController().signal)
-    )[0];
+    const first = (await search.search("discovery", new AbortController().signal))[0];
     const second = (
       await search.search("independent review", new AbortController().signal)
     )[0];
@@ -455,7 +420,7 @@ test("different observations from one URL keep distinct provenance instead of ov
     assert.equal(first.observation, "Message us to book.");
     assert.equal(second.observation, "Book online with Fresha.");
   } finally {
-    store.close();
+    await store.close();
     remove(directory);
   }
 });
@@ -499,7 +464,7 @@ test("provider errors expose safe parameter labels without echoing raw messages"
         !error.message.includes("private-upstream-message"),
     );
   } finally {
-    store.close();
+    await store.close();
     remove(directory);
   }
 });
@@ -540,41 +505,29 @@ test("the final summary separates ruled-out records from inconclusive checks wit
       findings: [],
       sources: [],
     };
-    const excluded = await provider.execute(
-      "quil",
-      input,
-      new AbortController().signal,
-    );
+    const excluded = await provider.execute("quil", input, new AbortController().signal);
     assert.match(excluded.text!, /existing website/);
     assert.doesNotMatch(excluded.text!, /inconclusive|another check/);
     input.decisions[0].verdict = "uncertain";
-    const uncertain = await provider.execute(
-      "quil",
-      input,
-      new AbortController().signal,
-    );
+    const uncertain = await provider.execute("quil", input, new AbortController().signal);
     assert.match(uncertain.text!, /another check/);
     input.candidates = [];
     input.decisions = [];
-    const empty = await provider.execute(
-      "quil",
-      input,
-      new AbortController().signal,
-    );
+    const empty = await provider.execute("quil", input, new AbortController().signal);
     assert.match(empty.text!, /No individual business/);
-    assert.deepEqual(store.usage("summary"), []);
+    assert.deepEqual(await store.usage("summary"), []);
   } finally {
-    store.close();
+    await store.close();
     remove(directory);
   }
 });
 
-test("restarting marks unfinished runs failed without releasing reservations or retrying", () => {
+test("restarting marks unfinished runs failed without releasing reservations or retrying", async () => {
   const directory = temporary(),
     store = new Store(directory);
   try {
     const now = new Date().toISOString();
-    store.createRun(
+    await store.createRun(
       {
         id: "restart",
         status: "paused",
@@ -591,15 +544,15 @@ test("restarting marks unfinished runs failed without releasing reservations or 
       },
       "token",
     );
-    store.reserve("restart", 5000, "openai", readConfig({}));
-    store.recover();
-    assert.equal(store.run("restart", "token")?.status, "failed");
+    await store.reserve("restart", 5000, "openai", readConfig({}));
+    await store.recover();
+    assert.equal((await store.run("restart", "token"))?.status, "failed");
     assert.equal(
-      (store.usage("restart")[0] as { nanoUsd: number }).nanoUsd,
+      ((await store.usage("restart"))[0] as { nanoUsd: number }).nanoUsd,
       5000,
     );
   } finally {
-    store.close();
+    await store.close();
     remove(directory);
   }
 });
@@ -624,7 +577,7 @@ test("the example stays free on a live-configured server, and brief clarificatio
     const created = (await response.json()) as CreatedRun;
     const result = await complete(api.base, created);
     assert.equal(result.mode, "fixture");
-    assert.deepEqual(api.store.usage(created.run.id), []);
+    assert.deepEqual(await api.store.usage(created.run.id), []);
     const blocked = await sessionFetch(api.base + "/api/runs", {
       method: "POST",
       headers,
@@ -645,8 +598,8 @@ test("a second API cannot recover or overwrite a running owner's data directory"
   const api = await start();
   try {
     const created = await create(api.base);
-    assert.throws(
-      () => createApi(readConfig({ QUIL_DATA_DIR: api.directory })),
+    await assert.rejects(
+      async () => await createApi(readConfig({ QUIL_DATA_DIR: api.directory })),
       /already owns/,
     );
     assert.notEqual((await snapshot(api.base, created)).status, "failed");
@@ -660,11 +613,7 @@ test("live adapters qualify before paid writing and correct an ungrounded introd
   const directory = temporary(),
     store = new Store(directory),
     config = readConfig(liveEnv);
-  const names = [
-    "Fern & Co. Cleaning",
-    "Clearwell Home Care",
-    "Sunday Cleaning Studio",
-  ];
+  const names = ["Fern & Co. Cleaning", "Clearwell Home Care", "Sunday Cleaning Studio"];
   let modelCalls = 0,
     searchCalls = 0;
   const transport: typeof fetch = async (url, init) => {
@@ -716,20 +665,16 @@ test("live adapters qualify before paid writing and correct an ungrounded introd
         candidates: names.map((name) => ({
           name,
           website: null,
-          sourceIds: [
-            input.sources.find((s: { title: string }) => s.title === name).id,
-          ],
+          sourceIds: [input.sources.find((s: { title: string }) => s.title === name).id],
         })),
       };
     else if (payload.instructions.startsWith("Research"))
       answer = {
-        findings: input.candidates.map(
-          (c: { id: string; sourceIds: string[] }) => ({
-            candidateId: c.id,
-            summary: "The directory record needs an independent check.",
-            sourceIds: c.sourceIds,
-          }),
-        ),
+        findings: input.candidates.map((c: { id: string; sourceIds: string[] }) => ({
+          candidateId: c.id,
+          summary: "The directory record needs an independent check.",
+          sourceIds: c.sourceIds,
+        })),
       };
     else
       answer = {
@@ -768,7 +713,7 @@ test("live adapters qualify before paid writing and correct an ungrounded introd
       createdAt: now,
       updatedAt: now,
     };
-    store.createRun(run, "token");
+    await store.createRun(run, "token");
     const engine = new MissionEngine(
       run,
       store,
@@ -790,47 +735,121 @@ test("live adapters qualify before paid writing and correct an ungrounded introd
       false,
     );
     assert.ok(
-      run.outcome!.drafts[0].text.includes(
-        "message us for booking availability",
-      ),
+      run.outcome!.drafts[0].text.includes("message us for booking availability"),
     );
     assert.ok(
-      store.events(run.id).some((event) => event.type === "draft.corrected"),
+      (await store.events(run.id)).some((event) => event.type === "draft.corrected"),
     );
     assert.ok(run.outcome!.sources.some((s) => s.kind === "website_reference"));
   } finally {
-    store.close();
+    await store.close();
     remove(directory);
   }
 });
 
 test("empty discovery broadens once, keeps review capacity, and bounds verbose research with a sourced fallback", async () => {
-  const directory=temporary(),store=new Store(directory),config=readConfig(liveEnv);
-  let searches=0,extractions=0;
-  const transport: typeof fetch=async(url,init)=>{
-    const payload=JSON.parse(init!.body as string);
-    if(url==='https://google.serper.dev/search'){
+  const directory = temporary(),
+    store = new Store(directory),
+    config = readConfig(liveEnv);
+  let searches = 0,
+    extractions = 0;
+  const transport: typeof fetch = async (url, init) => {
+    const payload = JSON.parse(init!.body as string);
+    if (url === "https://google.serper.dev/search") {
       searches++;
-      return Response.json({organic:searches===1?[]:[{title:'North Cleaning',link:'https://north.example.org/',snippet:'North Cleaning in Manchester. Contact us for appointments.'}]});
+      return Response.json({
+        organic:
+          searches === 1
+            ? []
+            : [
+                {
+                  title: "North Cleaning",
+                  link: "https://north.example.org/",
+                  snippet: "North Cleaning in Manchester. Contact us for appointments.",
+                },
+              ],
+      });
     }
-    const data=JSON.parse(payload.input).data;
-    let answer:unknown;
-    if(payload.instructions.startsWith('Extract')){
+    const data = JSON.parse(payload.input).data;
+    let answer: unknown;
+    if (payload.instructions.startsWith("Extract")) {
       extractions++;
-      if(extractions===1)answer={candidates:[]};
-      else {assert.equal(data.brief.limit,2);answer={candidates:[{name:'North Cleaning',website:'https://north.example.org/',sourceIds:[data.sources[0].id]}]};}
-    }else answer={findings:[{candidateId:data.candidates[0].id,summary:'Unsupported verbose model prose. '.repeat(20),sourceIds:data.candidates[0].sourceIds}]};
-    return Response.json({status:'completed',usage:{input_tokens:100,output_tokens:100},output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(answer)}]}]});
+      if (extractions === 1) answer = { candidates: [] };
+      else {
+        assert.equal(data.brief.limit, 2);
+        answer = {
+          candidates: [
+            {
+              name: "North Cleaning",
+              website: "https://north.example.org/",
+              sourceIds: [data.sources[0].id],
+            },
+          ],
+        };
+      }
+    } else
+      answer = {
+        findings: [
+          {
+            candidateId: data.candidates[0].id,
+            summary: "Unsupported verbose model prose. ".repeat(20),
+            sourceIds: data.candidates[0].sourceIds,
+          },
+        ],
+      };
+    return Response.json({
+      status: "completed",
+      usage: { input_tokens: 100, output_tokens: 100 },
+      output: [
+        {
+          type: "message",
+          content: [{ type: "output_text", text: JSON.stringify(answer) }],
+        },
+      ],
+    });
   };
-  try{
-    const provider=new LiveProvider(config,store,'broader-discovery',transport,async()=>({status:200,url:'https://north.example.org/',html:'<html><body>Contact</body></html>',truncated:false}));
-    const input:TaskInput={brief:{request:'Find cleaners',category:'cleaning',location:'Manchester',service:'website design',limit:3},revision:0,candidates:[],findings:[],decisions:[],sources:[]};
-    const discovered=await provider.execute('pip',input,new AbortController().signal);
-    assert.equal(searches,2);assert.equal(extractions,2);assert.equal(discovered.candidates!.length,1);
-    const researched=await provider.execute('milo',{...input,...discovered},new AbortController().signal);
-    assert.ok(researched.findings![0].summary.length<=350);
-    assert.match(researched.findings![0].summary,/North Cleaning in Manchester/);
-    assert.doesNotMatch(researched.findings![0].summary,/Unsupported verbose/);
-    assert.equal(searches,2);
-  }finally{store.close();remove(directory);}
+  try {
+    const provider = new LiveProvider(
+      config,
+      store,
+      "broader-discovery",
+      transport,
+      async () => ({
+        status: 200,
+        url: "https://north.example.org/",
+        html: "<html><body>Contact</body></html>",
+        truncated: false,
+      }),
+    );
+    const input: TaskInput = {
+      brief: {
+        request: "Find cleaners",
+        category: "cleaning",
+        location: "Manchester",
+        service: "website design",
+        limit: 3,
+      },
+      revision: 0,
+      candidates: [],
+      findings: [],
+      decisions: [],
+      sources: [],
+    };
+    const discovered = await provider.execute("pip", input, new AbortController().signal);
+    assert.equal(searches, 2);
+    assert.equal(extractions, 2);
+    assert.equal(discovered.candidates!.length, 1);
+    const researched = await provider.execute(
+      "milo",
+      { ...input, ...discovered },
+      new AbortController().signal,
+    );
+    assert.ok(researched.findings![0].summary.length <= 350);
+    assert.match(researched.findings![0].summary, /North Cleaning in Manchester/);
+    assert.doesNotMatch(researched.findings![0].summary, /Unsupported verbose/);
+    assert.equal(searches, 2);
+  } finally {
+    await store.close();
+    remove(directory);
+  }
 });

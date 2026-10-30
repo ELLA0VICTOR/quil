@@ -43,11 +43,7 @@ export type TaskResult = {
   corrections?: { candidateId: string; reason: string }[];
 };
 export interface TaskProvider {
-  execute(
-    agent: AgentId,
-    input: TaskInput,
-    signal: AbortSignal,
-  ): Promise<TaskResult>;
+  execute(agent: AgentId, input: TaskInput, signal: AbortSignal): Promise<TaskResult>;
 }
 type Json = Record<string, unknown>;
 const object = (value: unknown): Json => {
@@ -61,12 +57,10 @@ const text = (value: unknown, max = 1200): string => {
   return value.trim();
 };
 const list = (value: unknown, max = 3): unknown[] => {
-  if (!Array.isArray(value) || value.length > max)
-    throw Error("Invalid provider list");
+  if (!Array.isArray(value) || value.length > max) throw Error("Invalid provider list");
   return value;
 };
-const digest = (value: string) =>
-  createHash("sha256").update(value).digest("hex");
+const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 function safeUrl(value: unknown): string {
   const url = new URL(text(value, 2000));
   if (!/^https?:$/.test(url.protocol) || url.username || url.password)
@@ -123,11 +117,7 @@ export class OpenAIJson {
     private runId: string,
     private fetcher: typeof fetch = fetch,
   ) {}
-  async call(
-    instructions: string,
-    input: unknown,
-    signal: AbortSignal,
-  ): Promise<Json> {
+  async call(instructions: string, input: unknown, signal: AbortSignal): Promise<Json> {
     assertLiveConfigured(this.config);
     const body = JSON.stringify({
       model: this.config.model,
@@ -143,15 +133,17 @@ export class OpenAIJson {
     const bytes = Buffer.byteLength(body);
     if (bytes > 14_000)
       throw Error("Model input exceeds the configured small-context limit");
-    const owner = this.store.db.prepare("SELECT user_id FROM run_owners WHERE run_id=?").get(this.runId) as { user_id: string } | undefined;
+    const owner = (await this.store.db
+      .prepare("SELECT user_id FROM run_owners WHERE run_id=?")
+      .get(this.runId)) as { user_id: string } | undefined;
     const key = `model:v2:${owner?.user_id ?? "internal"}:${digest(body)}`;
-    const cached = this.store.cached<Json>(key);
+    const cached = await this.store.cached<Json>(key);
     if (cached) return cached;
     // Standard GPT-6 Luna pricing verified 2026-10-29: 100/500 nano-USD per
     // input/output token. Count input at 125 to cover standard cache writes;
     // never rely on cache discounts. Ledger amounts are conservative estimates.
     const maxInput = bytes + 2048;
-    const reservation = this.store.reserve(
+    const reservation = await this.store.reserve(
       this.runId,
       maxInput * 125 + 800 * 500,
       "openai",
@@ -183,7 +175,7 @@ export class OpenAIJson {
       (outputTokens as number) > 800
     )
       throw Error("Invalid or unexpected provider usage; reservation retained");
-    this.store.settle(
+    await this.store.settle(
       reservation,
       (inputTokens as number) * 125 + (outputTokens as number) * 500,
     );
@@ -201,7 +193,7 @@ export class OpenAIJson {
       })
       .join("");
     const result = object(JSON.parse(output));
-    this.store.cache(key, result, 60 * 60 * 1000);
+    await this.store.cache(key, result, 60 * 60 * 1000);
     return result;
   }
 }
@@ -216,9 +208,9 @@ export class SerperSearch {
   async search(query: string, signal: AbortSignal): Promise<Source[]> {
     assertLiveConfigured(this.config);
     const key = `search:v2:${digest(query.toLowerCase())}`;
-    const cached = this.store.cached<Source[]>(key);
+    const cached = await this.store.cached<Source[]>(key);
     if (cached) return cached;
-    this.store.reserve(this.runId, 0, "search", this.config);
+    await this.store.reserve(this.runId, 0, "search", this.config);
     const raw = object(
       await readJson(
         await this.fetcher("https://google.serper.dev/search", {
@@ -253,10 +245,7 @@ export class SerperSearch {
       });
     if (raw.knowledgeGraph && typeof raw.knowledgeGraph === "object") {
       const graph = raw.knowledgeGraph as Json;
-      if (
-        typeof graph.website === "string" &&
-        typeof graph.title === "string"
-      ) {
+      if (typeof graph.website === "string" && typeof graph.title === "string") {
         const url = safeUrl(graph.website);
         sources.push({
           id: `source-${digest(JSON.stringify([url, graph.title, graph.description, "website_reference"])).slice(0, 16)}`,
@@ -273,7 +262,7 @@ export class SerperSearch {
       }
     }
     const unique = [...new Map(sources.map((s) => [s.id, s])).values()];
-    this.store.cache(key, unique, 6 * 60 * 60 * 1000);
+    await this.store.cache(key, unique, 6 * 60 * 60 * 1000);
     return unique;
   }
 }
@@ -304,56 +293,65 @@ export class LiveProvider implements TaskProvider {
         signal,
       );
       const extract = async (records: Source[], limit: number) => {
-      const raw = await this.ai.call(
-        'Extract actual individual businesses, not directories or articles. JSON: {"candidates":[{"name":string,"website":string|null,"sourceIds":string[]}]}. Use only supplied sources, at most the requested limit. Prefer named businesses whose records explicitly describe manual bookings in the requested area. Never extract a directory, listicle or a social platform as a business. A missing website field means unknown; social/directory URLs are not standalone websites.',
-        { brief: { ...brief, limit }, sources: records },
-        signal,
-      );
-      const extracted = list(raw.candidates, limit).flatMap((item) => {
-        const value = object(item),
-          name = text(value.name, 120);
-        const ids = this.sourceIds(value.sourceIds, records);
-        if (
-          !ids.length ||
-          !records.some(
-            (s) =>
-              ids.includes(s.id) &&
-              normalized(
-                s.title + " " + s.observation + " " + new URL(s.url).pathname,
-              ).includes(normalized(name)),
-          )
-        )
-          return []; // Keep traceable candidates when one extraction is unsupported.
-        let website: string | null = null;
-        if (value.website) {
-          const url = safeUrl(value.website);
+        const raw = await this.ai.call(
+          'Extract actual individual businesses, not directories or articles. JSON: {"candidates":[{"name":string,"website":string|null,"sourceIds":string[]}]}. Use only supplied sources, at most the requested limit. Prefer named businesses whose records explicitly describe manual bookings in the requested area. Never extract a directory, listicle or a social platform as a business. A missing website field means unknown; social/directory URLs are not standalone websites.',
+          { brief: { ...brief, limit }, sources: records },
+          signal,
+        );
+        const extracted = list(raw.candidates, limit).flatMap((item) => {
+          const value = object(item),
+            name = text(value.name, 120);
+          const ids = this.sourceIds(value.sourceIds, records);
           if (
-            standaloneWebsite(url) &&
-            records.some(
+            !ids.length ||
+            !records.some(
               (s) =>
                 ids.includes(s.id) &&
-                (s.url === url || s.observation.includes(url)),
+                normalized(
+                  s.title + " " + s.observation + " " + new URL(s.url).pathname,
+                ).includes(normalized(name)),
             )
           )
-            website = url;
-        }
-        return {
-          id: `business-${digest(normalized(name) + ":" + normalized(brief.location)).slice(0, 12)}`,
-          name,
-          website,
-          sourceIds: ids,
-        };
-      });
-      const unique = [...new Map(extracted.map((c) => [c.id, c])).values()];
-      return unique;
+            return []; // Keep traceable candidates when one extraction is unsupported.
+          let website: string | null = null;
+          if (value.website) {
+            const url = safeUrl(value.website);
+            if (
+              standaloneWebsite(url) &&
+              records.some(
+                (s) =>
+                  ids.includes(s.id) && (s.url === url || s.observation.includes(url)),
+              )
+            )
+              website = url;
+          }
+          return {
+            id: `business-${digest(normalized(name) + ":" + normalized(brief.location)).slice(0, 12)}`,
+            name,
+            website,
+            sourceIds: ids,
+          };
+        });
+        const unique = [...new Map(extracted.map((c) => [c.id, c])).values()];
+        return unique;
       };
       let found = await extract(sources, brief.limit);
       // One broader discovery pass after a successful but empty extraction.
       // Reserve enough of the per-run search allowance for every later review.
       if (!found.length && this.config.searchPerRun >= 3) {
-        const broader = await this.search.search(`${brief.category} ${brief.location} business official website contact booking`, signal);
-        sources = [...new Map([...sources, ...broader].map((source) => [source.id, source])).values()];
-        found = await extract(sources, Math.min(brief.limit, this.config.searchPerRun - 2));
+        const broader = await this.search.search(
+          `${brief.category} ${brief.location} business official website contact booking`,
+          signal,
+        );
+        sources = [
+          ...new Map(
+            [...sources, ...broader].map((source) => [source.id, source]),
+          ).values(),
+        ];
+        found = await extract(
+          sources,
+          Math.min(brief.limit, this.config.searchPerRun - 2),
+        );
       }
       return { candidates: found, sources };
     }
@@ -369,9 +367,7 @@ export class LiveProvider implements TaskProvider {
         .map((check) => ({
           id: `website-${digest(JSON.stringify(check)).slice(0, 16)}`,
           url: check.url!,
-          title: candidates.find(
-            (candidate) => candidate.id === check.candidateId,
-          )!.name,
+          title: candidates.find((candidate) => candidate.id === check.candidateId)!.name,
           observation:
             check.reason +
             (check.bookingLinks.length
@@ -393,16 +389,19 @@ export class LiveProvider implements TaskProvider {
         if (!ids.length || ids.some((id) => !c.sourceIds.includes(id)))
           throw Error("Untraceable research finding");
         const summary = text(v.summary, 4000);
-        const excerpt = input.sources.find((source) => source.id === ids[0])!.observation.slice(0, 170);
+        const excerpt = input.sources
+          .find((source) => source.id === ids[0])!
+          .observation.slice(0, 170);
         return {
           candidateId: c.id,
-          summary: summary.length <= 350 ? summary : `Public search excerpt: “${excerpt}”. This excerpt does not verify the full website or booking process.`,
+          summary:
+            summary.length <= 350
+              ? summary
+              : `Public search excerpt: “${excerpt}”. This excerpt does not verify the full website or booking process.`,
           sourceIds: ids,
         };
       });
-      if (
-        new Set(findings.map((f) => f.candidateId)).size !== candidates.length
-      )
+      if (new Set(findings.map((f) => f.candidateId)).size !== candidates.length)
         throw Error("Research did not cover each business");
       return { findings, websiteChecks, sources: pageSources };
     }
@@ -413,10 +412,7 @@ export class LiveProvider implements TaskProvider {
             const check = input.websiteChecks?.find(
               (item) => item.candidateId === decision.candidateId,
             );
-            if (
-              check?.bookingLinks.length &&
-              decision.verdict === "opportunity"
-            )
+            if (check?.bookingLinks.length && decision.verdict === "opportunity")
               return {
                 ...decision,
                 verdict: "uncertain" as const,
@@ -428,8 +424,7 @@ export class LiveProvider implements TaskProvider {
                     ...input.sources
                       .filter(
                         (source) =>
-                          source.kind === "website_page" &&
-                          source.url === check.url,
+                          source.kind === "website_page" && source.url === check.url,
                       )
                       .map((source) => source.id),
                   ]),
@@ -448,9 +443,7 @@ export class LiveProvider implements TaskProvider {
         sources.push(...records);
         decisions.push(
           reviewCandidate(candidate, brief, [
-            ...input.sources.filter((source) =>
-              candidate.sourceIds.includes(source.id),
-            ),
+            ...input.sources.filter((source) => candidate.sourceIds.includes(source.id)),
             ...records,
           ]),
         );
@@ -482,9 +475,7 @@ export class LiveProvider implements TaskProvider {
         brief,
         candidates: eligible,
         findings: input.findings.filter((f) => eligibleIds.has(f.candidateId)),
-        decisions: input.decisions.filter((d) =>
-          eligibleIds.has(d.candidateId),
-        ),
+        decisions: input.decisions.filter((d) => eligibleIds.has(d.candidateId)),
         sources: input.sources.filter((s) => sourceIds.has(s.id)),
       };
       const raw = await this.ai.call(
@@ -492,10 +483,7 @@ export class LiveProvider implements TaskProvider {
         draftInput,
         signal,
       );
-      const proposalPlans = new Map<
-        string,
-        { angle?: unknown; scope?: unknown }
-      >();
+      const proposalPlans = new Map<string, { angle?: unknown; scope?: unknown }>();
       const corrections: NonNullable<TaskResult["corrections"]> = [];
       const drafts = list(raw.drafts, 3).map((item) => {
         const v = object(item),
@@ -597,8 +585,7 @@ export class FixtureProvider implements TaskProvider {
         id: "fixture-fern",
         url: "https://example.invalid/fern",
         title: "Fictional Fern booking profile",
-        observation:
-          "Fern & Co. Cleaning asks customers to message for availability.",
+        observation: "Fern & Co. Cleaning asks customers to message for availability.",
         observedAt: new Date().toISOString(),
         fictional: true,
       },
@@ -695,9 +682,7 @@ export class FixtureProvider implements TaskProvider {
               },
               c,
               input.brief,
-              input.decisions.find(
-                (decision) => decision.candidateId === c.id,
-              ) ?? {
+              input.decisions.find((decision) => decision.candidateId === c.id) ?? {
                 candidateId: c.id,
                 verdict: "uncertain",
                 reason: "Provisional: awaiting independent review.",

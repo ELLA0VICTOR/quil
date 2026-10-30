@@ -1,9 +1,4 @@
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-} from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Config } from "./config.ts";
@@ -45,6 +40,12 @@ export class GoogleConnection {
     readonly userId = "internal-test",
   ) {}
   private key() {
+    if (this.config.tokenKey) {
+      const key = Buffer.from(this.config.tokenKey, "base64");
+      if (key.length !== 32)
+        throw new ActionError(503, "Google credential storage needs attention.");
+      return key;
+    }
     const path = join(this.config.dataDir, "google-token.key");
     if (!existsSync(path))
       writeFileSync(path, randomBytes(32), { flag: "wx", mode: 0o600 });
@@ -53,10 +54,10 @@ export class GoogleConnection {
       throw new ActionError(503, "Google credential storage needs attention.");
     return key;
   }
-  private load(): Tokens | undefined {
-    const row = this.store.db
+  private async load(): Promise<Tokens | undefined> {
+    const row = (await this.store.db
       .prepare("SELECT secret FROM integrations WHERE name=?")
-      .get(`google:${this.userId}`) as { secret: string } | undefined;
+      .get(`google:${this.userId}`)) as { secret: string } | undefined;
     if (!row) return;
     try {
       const encoded = row.secret.startsWith("v2.") ? row.secret.slice(3) : row.secret;
@@ -67,9 +68,7 @@ export class GoogleConnection {
       if (row.secret.startsWith("v2.")) decipher.setAAD(Buffer.from(this.userId));
       decipher.setAuthTag(tag);
       return JSON.parse(
-        Buffer.concat([decipher.update(encrypted), decipher.final()]).toString(
-          "utf8",
-        ),
+        Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8"),
       );
     } catch {
       throw new ActionError(
@@ -78,7 +77,7 @@ export class GoogleConnection {
       );
     }
   }
-  private save(tokens: Tokens) {
+  private async save(tokens: Tokens) {
     const iv = randomBytes(12),
       cipher = createCipheriv("aes-256-gcm", this.key(), iv);
     cipher.setAAD(Buffer.from(this.userId));
@@ -86,45 +85,70 @@ export class GoogleConnection {
       cipher.update(JSON.stringify(tokens)),
       cipher.final(),
     ]);
-    this.store.db
+    await this.store.db
       .prepare("INSERT OR REPLACE INTO integrations VALUES(?,?)")
       .run(
         `google:${this.userId}`,
-        "v2." + [iv, cipher.getAuthTag(), encrypted]
-          .map((part) => part.toString("base64"))
-          .join("."),
+        "v2." +
+          [iv, cipher.getAuthTag(), encrypted]
+            .map((part) => part.toString("base64"))
+            .join("."),
       );
   }
-  ownsState(state: string) { return this.pending.has(state); }
-  adoptLegacy(verifiedEmail: string) {
-    const row = this.store.db.prepare("SELECT secret FROM integrations WHERE name='google'").get() as { secret: string } | undefined;
+  ownsState(state: string) {
+    return this.pending.has(state);
+  }
+  async adoptLegacy(verifiedEmail: string) {
+    const row = (await this.store.db
+      .prepare("SELECT secret FROM integrations WHERE name='google'")
+      .get()) as { secret: string } | undefined;
     if (!row) return false;
     let tokens: Tokens;
-    try { const [iv, tag, encrypted] = row.secret.split(".").map((part) => Buffer.from(part,"base64")); const cipher = createDecipheriv("aes-256-gcm", this.key(), iv); cipher.setAuthTag(tag); tokens = JSON.parse(Buffer.concat([cipher.update(encrypted),cipher.final()]).toString("utf8")); } catch { return false; }
-    if (tokens.email.toLowerCase() !== verifiedEmail.toLowerCase()) return false;
-    if (!this.load()) this.save(tokens);
-    this.store.db.exec("BEGIN IMMEDIATE");
     try {
-      this.store.db.prepare("INSERT INTO run_owners SELECT id,? FROM runs WHERE id NOT IN (SELECT run_id FROM run_owners)").run(this.userId);
-      this.store.db.prepare("INSERT OR IGNORE INTO outreach_owners SELECT id,? FROM outreach WHERE run_id IN (SELECT run_id FROM run_owners WHERE user_id=?)").run(this.userId,this.userId);
-      this.store.db.prepare("INSERT OR IGNORE INTO charge_times SELECT c.id,json_extract(r.snapshot,'$.createdAt') FROM charges c JOIN runs r ON r.id=c.run_id").run();
-      this.store.db.prepare("DELETE FROM integrations WHERE name='google'").run();
-      this.store.db.exec("COMMIT");
-    } catch(error) { this.store.db.exec("ROLLBACK"); throw error; }
+      const [iv, tag, encrypted] = row.secret
+        .split(".")
+        .map((part) => Buffer.from(part, "base64"));
+      const cipher = createDecipheriv("aes-256-gcm", this.key(), iv);
+      cipher.setAuthTag(tag);
+      tokens = JSON.parse(
+        Buffer.concat([cipher.update(encrypted), cipher.final()]).toString("utf8"),
+      );
+    } catch {
+      return false;
+    }
+    if (tokens.email.toLowerCase() !== verifiedEmail.toLowerCase()) return false;
+    if (!(await this.load())) await this.save(tokens);
+    await this.store.db.transaction(async () => {
+      await this.store.db
+        .prepare(
+          "INSERT INTO run_owners SELECT id,? FROM runs WHERE id NOT IN (SELECT run_id FROM run_owners)",
+        )
+        .run(this.userId);
+      await this.store.db
+        .prepare(
+          "INSERT OR IGNORE INTO outreach_owners SELECT id,? FROM outreach WHERE run_id IN (SELECT run_id FROM run_owners WHERE user_id=?)",
+        )
+        .run(this.userId, this.userId);
+      await this.store.db
+        .prepare(
+          "INSERT OR IGNORE INTO charge_times SELECT c.id,json_extract(r.snapshot,'$.createdAt') FROM charges c JOIN runs r ON r.id=c.run_id",
+        )
+        .run();
+      await this.store.db.prepare("DELETE FROM integrations WHERE name='google'").run();
+    });
     return true;
   }
-  status(): GoogleStatus {
-    const tokens = this.load();
+  async status(): Promise<GoogleStatus> {
+    const tokens = await this.load();
     return {
-      configured:
-        !!this.config.googleClientId && !!this.config.googleClientSecret,
+      configured: !!this.config.googleClientId && !!this.config.googleClientSecret,
       connected: !!tokens,
       email: tokens?.email,
       redirectUri: this.config.googleRedirectUri,
     };
   }
-  authorize(returnTo: string) {
-    if (!this.status().configured)
+  async authorize(returnTo: string) {
+    if (!(await this.status()).configured)
       throw new ActionError(
         503,
         "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the server environment first. See docs/GOOGLE-SETUP.md.",
@@ -140,6 +164,11 @@ export class GoogleConnection {
       expires: Date.now() + 600_000,
       returnTo,
     });
+    await this.store.cache(
+      `google-state:${this.userId}:${createHash("sha256").update(state).digest("hex")}`,
+      this.pending.get(state),
+      600_000,
+    );
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     url.search = new URLSearchParams({
       client_id: this.config.googleClientId,
@@ -169,8 +198,7 @@ export class GoogleConnection {
       );
     }
     const reader = response.body?.getReader();
-    if (!reader)
-      throw new ActionError(502, "Google returned an empty response.");
+    if (!reader) throw new ActionError(502, "Google returned an empty response.");
     const chunks: Uint8Array[] = [];
     let bytes = 0;
     try {
@@ -179,10 +207,7 @@ export class GoogleConnection {
         if (done) break;
         bytes += value.length;
         if (bytes > 300_000)
-          throw new ActionError(
-            502,
-            "Google response exceeded the local limit.",
-          );
+          throw new ActionError(502, "Google response exceeded the local limit.");
         chunks.push(value);
       }
     } finally {
@@ -197,18 +222,15 @@ export class GoogleConnection {
         response.status,
       );
     try {
-      const value: unknown = JSON.parse(
-        Buffer.concat(chunks).toString("utf8") || "{}",
-      );
-      if (!value || typeof value !== "object" || Array.isArray(value))
-        throw Error();
+      const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+      if (!value || typeof value !== "object" || Array.isArray(value)) throw Error();
       return value as Json;
     } catch {
       throw new ActionError(502, "Google returned an unreadable response.");
     }
   }
   private async token(fields: Record<string, string>) {
-    return this.json("https://oauth2.googleapis.com/token", {
+    return await this.json("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -219,7 +241,11 @@ export class GoogleConnection {
     });
   }
   async callback(state: string, code: string) {
-    const pending = this.pending.get(state);
+    const pending = await this.store.take<{
+      verifier: string;
+      expires: number;
+      returnTo: string;
+    }>(`google-state:${this.userId}:${createHash("sha256").update(state).digest("hex")}`);
     this.pending.delete(state);
     if (!pending || pending.expires < Date.now() || !code || code.length > 4000)
       throw new ActionError(
@@ -251,7 +277,7 @@ export class GoogleConnection {
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.emailAddress)
     )
       throw new ActionError(502, "Google did not confirm the account address.");
-    this.save({
+    await this.save({
       access_token: raw.access_token,
       refresh_token: raw.refresh_token,
       expires_at: Date.now() + Number(raw.expires_in || 3600) * 1000,
@@ -260,9 +286,8 @@ export class GoogleConnection {
     return pending.returnTo;
   }
   private async credentials() {
-    const tokens = this.load();
-    if (!tokens)
-      throw new ActionError(409, "Connect Gmail and Google Calendar first.");
+    const tokens = await this.load();
+    if (!tokens) throw new ActionError(409, "Connect Gmail and Google Calendar first.");
     if (tokens.expires_at > Date.now() + 60_000) return tokens;
     if (!this.refreshing)
       this.refreshing = (async () => {
@@ -277,7 +302,7 @@ export class GoogleConnection {
           access_token: fresh.access_token,
           expires_at: Date.now() + Number(fresh.expires_in || 3600) * 1000,
         };
-        this.save(next);
+        await this.save(next);
         return next;
       })().finally(() => {
         this.refreshing = undefined;
@@ -289,7 +314,7 @@ export class GoogleConnection {
     // Callers supply internal API paths, never URLs from model or source data.
     if (!/^\/(?:gmail\/v1\/users\/me\/|calendar\/v3\/)/.test(path))
       throw new ActionError(400, "Unsupported Google operation.");
-    return this.json(`https://www.googleapis.com${path}`, {
+    return await this.json(`https://www.googleapis.com${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${credentials.access_token}`,
@@ -299,8 +324,10 @@ export class GoogleConnection {
     });
   }
   async disconnect() {
-    const tokens = this.load();
-    this.store.db.prepare("DELETE FROM integrations WHERE name=?").run(`google:${this.userId}`);
+    const tokens = await this.load();
+    await this.store.db
+      .prepare("DELETE FROM integrations WHERE name=?")
+      .run(`google:${this.userId}`);
     if (tokens)
       await this.fetcher("https://oauth2.googleapis.com/revoke", {
         method: "POST",

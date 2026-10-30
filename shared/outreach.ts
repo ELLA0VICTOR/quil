@@ -14,6 +14,7 @@ export type OutreachAction = {
   subject: string;
   text: string;
   createdAt: string;
+  executionStartedAt?: string;
   expiresAt: string;
   threadId?: string;
   messageId?: string;

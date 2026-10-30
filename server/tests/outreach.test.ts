@@ -12,7 +12,7 @@ import type { RunSnapshot } from "../../shared/mission.ts";
 
 const root = resolve(".quil-data/tests");
 mkdirSync(root, { recursive: true });
-function setup() {
+async function setup() {
   const directory = mkdtempSync(join(root, "outreach-")),
     store = new Store(directory);
   let now = Date.now(),
@@ -76,9 +76,7 @@ function setup() {
                 {
                   id: "reply-1",
                   payload: {
-                    headers: [
-                      { name: "From", value: "Owner <owner@example.com>" },
-                    ],
+                    headers: [{ name: "From", value: "Owner <owner@example.com>" }],
                   },
                 },
               ]
@@ -144,8 +142,16 @@ function setup() {
       sources: [],
     },
   };
-  store.db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run("internal-test","test-sub","freelancer@example.com","Test",new Date().toISOString());
-  store.createRun(run, "test-run-token", "internal-test");
+  await store.db
+    .prepare("INSERT INTO users VALUES(?,?,?,?,?)")
+    .run(
+      "internal-test",
+      "test-sub",
+      "freelancer@example.com",
+      "Test",
+      new Date().toISOString(),
+    );
+  await store.createRun(run, "test-run-token", "internal-test");
   const input = {
     runId: run.id,
     candidateId: "business-one",
@@ -156,15 +162,15 @@ function setup() {
     text: "Would a booking page be useful?",
   };
   const connect = async () => {
-    const url = new URL(google.authorize("http://localhost:5173"));
+    const url = new URL(await google.authorize("http://localhost:5173"));
     grantScopes = url.searchParams.get("scope")!;
     assert.equal(url.searchParams.get("code_challenge_method"), "S256");
     const state = url.searchParams.get("state")!;
     await google.callback(state, "test-code");
     return state;
   };
-  const close = () => {
-    store.close();
+  const close = async () => {
+    await store.close();
     assert.ok(resolve(directory).startsWith(root + sep));
     rmSync(directory, {
       recursive: true,
@@ -203,25 +209,22 @@ function setup() {
 }
 
 test("Google uses single-use OAuth state, encrypted server credentials and exposes no tokens", async () => {
-  const app = setup();
+  const app = await setup();
   try {
     const state = await app.connect();
-    assert.equal(app.google.status().email, "freelancer@example.com");
-    assert.doesNotMatch(JSON.stringify(app.google.status()), /private-test/);
-    const row = app.store.db
-      .prepare("SELECT secret FROM integrations")
-      .get() as { secret: string };
+    assert.equal((await app.google.status()).email, "freelancer@example.com");
+    assert.doesNotMatch(JSON.stringify(await app.google.status()), /private-test/);
+    const row = (await app.store.db.prepare("SELECT secret FROM integrations").get()) as {
+      secret: string;
+    };
     assert.doesNotMatch(row.secret, /private-test|freelancer@example/);
-    await assert.rejects(
-      app.google.callback(state, "reused-code"),
-      /expired|verified/,
-    );
+    await assert.rejects(app.google.callback(state, "reused-code"), /expired|verified/);
   } finally {
-    app.close();
+    await app.close();
   }
 });
 test("messages require a reviewed preview and durable approval prevents duplicate sends", async () => {
-  const app = setup();
+  const app = await setup();
   try {
     await app.connect();
     await assert.rejects(
@@ -242,37 +245,31 @@ test("messages require a reviewed preview and durable approval prevents duplicat
       app.service.approve(action.id, true),
       app.service.approve(action.id, true),
     ]);
-    assert.equal(
-      result.filter((value) => value.status === "fulfilled").length,
-      1,
-    );
+    assert.equal(result.filter((value) => value.status === "fulfilled").length, 1);
     assert.equal(app.counts().sends, 1);
-    assert.equal(app.service.get(action.id).state, "sent");
+    assert.equal((await app.service.get(action.id)).state, "sent");
   } finally {
-    app.close();
+    await app.close();
   }
 });
 test("fictional and withdrawn leads cannot send through Gmail", async () => {
-  const app = setup();
+  const app = await setup();
   try {
     await app.connect();
     app.run.mode = "fixture";
-    app.store.saveRun(app.run);
+    await app.store.saveRun(app.run);
     await assert.rejects(app.service.prepare(app.input), /Fictional/);
     app.run.mode = "live";
     app.run.outcome!.decisions[0].verdict = "ruled_out";
-    app.store.saveRun(app.run);
-    await assert.rejects(
-      app.service.prepare(app.input),
-      /approved live opportunity/,
-    );
+    await app.store.saveRun(app.run);
+    await assert.rejects(app.service.prepare(app.input), /approved live opportunity/);
     assert.equal(app.counts().sends, 0);
   } finally {
-    app.close();
+    await app.close();
   }
 });
 test("follow-ups wait until due and stop if a reply arrives before or after preview", async () => {
-  const app = setup();
+  const app = await setup();
   try {
     await app.connect();
     const original = await app.service.prepare(app.input);
@@ -293,17 +290,14 @@ test("follow-ups wait until due and stop if a reply arrives before or after prev
       kind: "follow_up",
     });
     app.setReply(true);
-    await assert.rejects(
-      app.service.approve(followUp.id, true),
-      /reply has arrived/,
-    );
+    await assert.rejects(app.service.approve(followUp.id, true), /reply has arrived/);
     assert.equal(app.counts().sends, 1);
   } finally {
-    app.close();
+    await app.close();
   }
 });
 test("lost send receipts stay uncertain and reconcile without resending", async () => {
-  const app = setup();
+  const app = await setup();
   try {
     await app.connect();
     const action = await app.service.prepare(app.input);
@@ -312,19 +306,16 @@ test("lost send receipts stay uncertain and reconcile without resending", async 
       app.service.approve(action.id, true),
       (error: Error) => !error.message.includes("private-test-access"),
     );
-    assert.equal(app.service.get(action.id).state, "uncertain");
-    await assert.rejects(
-      app.service.approve(action.id, true),
-      /already been processed/,
-    );
+    assert.equal((await app.service.get(action.id)).state, "uncertain");
+    await assert.rejects(app.service.approve(action.id, true), /already been processed/);
     assert.equal((await app.service.sync(action.id)).state, "sent");
     assert.equal(app.counts().sends, 1);
   } finally {
-    app.close();
+    await app.close();
   }
 });
 test("meeting invitations recheck availability and distinguish invitation from attendee acceptance", async () => {
-  const app = setup();
+  const app = await setup();
   try {
     await app.connect();
     const input = {
@@ -346,11 +337,11 @@ test("meeting invitations recheck availability and distinguish invitation from a
     assert.equal((await app.service.sync(second.id)).attendance, "accepted");
     assert.equal(app.counts().invites, 1);
   } finally {
-    app.close();
+    await app.close();
   }
 });
 test("calendar suggestions respect busy periods, working hours and the user's timezone", async () => {
-  const app = setup();
+  const app = await setup();
   try {
     await app.connect();
     const request = {
@@ -370,9 +361,7 @@ test("calendar suggestions respect busy periods, working hours and the user's ti
         hourCycle: "h23",
       }).formatToParts(new Date(slot.start));
       assert.ok(
-        !["Sat", "Sun"].includes(
-          local.find((part) => part.type === "weekday")!.value,
-        ),
+        !["Sat", "Sun"].includes(local.find((part) => part.type === "weekday")!.value),
       );
       assert.ok(Number(local.find((part) => part.type === "hour")!.value) >= 9);
     }
@@ -380,15 +369,16 @@ test("calendar suggestions respect busy periods, working hours and the user's ti
     assert.equal((await app.service.availableSlots(request)).length, 0);
     assert.equal(app.counts().invites, 0);
   } finally {
-    app.close();
+    await app.close();
   }
 });
 test("integration HTTP writes require a local owner cookie, allowed origin and explicit review header", async () => {
-  const app = setup(),
-    api = createApi(app.config, { store: app.store, googleFactory: () => app.google });
-  await new Promise<void>((resolve) =>
-    api.server.listen(0, "127.0.0.1", resolve),
-  );
+  const app = await setup(),
+    api = await createApi(app.config, {
+      store: app.store,
+      googleFactory: () => app.google,
+    });
+  await new Promise<void>((resolve) => api.server.listen(0, "127.0.0.1", resolve));
   const port = (api.server.address() as { port: number }).port,
     base = `http://127.0.0.1:${port}`;
   try {
@@ -397,7 +387,9 @@ test("integration HTTP writes require a local owner cookie, allowed origin and e
     });
     assert.equal(unauthorized.status, 401);
     const token = randomBytes(32).toString("hex");
-    app.store.db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token), "internal-test", Date.now() + 3600_000);
+    await app.store.db
+      .prepare("INSERT INTO sessions VALUES(?,?,?)")
+      .run(hashToken(token), "internal-test", Date.now() + 3600_000);
     const cookie = `quil_session=${token}`;
     const headers = {
       Cookie: cookie,
@@ -405,8 +397,7 @@ test("integration HTTP writes require a local owner cookie, allowed origin and e
       "Content-Type": "application/json",
     };
     assert.equal(
-      (await fetch(base + "/api/google/connect", { method: "POST", headers }))
-        .status,
+      (await fetch(base + "/api/google/connect", { method: "POST", headers })).status,
       403,
     );
     const response = await fetch(base + "/api/google/connect", {
@@ -414,10 +405,7 @@ test("integration HTTP writes require a local owner cookie, allowed origin and e
       headers: { ...headers, "X-Quil-Action": "review" },
     });
     assert.equal(response.status, 200);
-    assert.equal(
-      new URL((await response.json()).url).hostname,
-      "accounts.google.com",
-    );
+    assert.equal(new URL((await response.json()).url).hostname, "accounts.google.com");
     assert.equal(app.counts().sends, 0);
     await app.connect();
     const reviewHeaders = { ...headers, "X-Quil-Action": "review" };
@@ -435,20 +423,14 @@ test("integration HTTP writes require a local owner cookie, allowed origin and e
     });
     assert.equal(sent.status, 200);
     assert.ok(
-      app.store
-        .events(app.run.id)
-        .some(
-          (event) =>
-            event.type === "outreach.agent.completed" && event.agent === "wren",
-        ),
+      (await app.store.events(app.run.id)).some(
+        (event) => event.type === "outreach.agent.completed" && event.agent === "wren",
+      ),
     );
     assert.ok(
-      app.store
-        .events(app.run.id)
-        .some(
-          (event) =>
-            event.type === "outreach.agent.completed" && event.agent === "quil",
-        ),
+      (await app.store.events(app.run.id)).some(
+        (event) => event.type === "outreach.agent.completed" && event.agent === "quil",
+      ),
     );
   } finally {
     await api.close();

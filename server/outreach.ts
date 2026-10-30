@@ -20,10 +20,7 @@ const email = (value: unknown) => {
 };
 const text = (value: unknown, max: number) => {
   if (typeof value !== "string" || !value.trim() || value.length > max)
-    throw new ActionError(
-      400,
-      "Complete the message within the displayed limits.",
-    );
+    throw new ActionError(400, "Complete the message within the displayed limits.");
   return value.trim();
 };
 type Json = Record<string, unknown>;
@@ -38,8 +35,8 @@ export class OutreachService {
     private now = () => Date.now(),
     readonly userId = google.userId,
   ) {}
-  private persist(action: OutreachAction) {
-    this.store.db
+  private async persist(action: OutreachAction) {
+    await this.store.db
       .prepare("INSERT OR REPLACE INTO outreach VALUES(?,?,?,?,?)")
       .run(
         action.id,
@@ -48,41 +45,43 @@ export class OutreachService {
         action.state,
         JSON.stringify(action),
       );
-    this.store.db.prepare("INSERT OR REPLACE INTO outreach_owners VALUES(?,?)").run(action.id, this.userId);
+    await this.store.db
+      .prepare("INSERT OR REPLACE INTO outreach_owners VALUES(?,?)")
+      .run(action.id, this.userId);
     return action;
   }
-  get(id: string): OutreachAction {
-    const row = this.store.db
-      .prepare("SELECT a.record FROM outreach a JOIN outreach_owners o ON o.action_id=a.id WHERE a.id=? AND o.user_id=?")
-      .get(id, this.userId) as { record: string } | undefined;
+  async get(id: string): Promise<OutreachAction> {
+    const row = (await this.store.db
+      .prepare(
+        "SELECT a.record FROM outreach a JOIN outreach_owners o ON o.action_id=a.id WHERE a.id=? AND o.user_id=?",
+      )
+      .get(id, this.userId)) as { record: string } | undefined;
     if (!row) throw new ActionError(404, "Outreach item not found.");
     return JSON.parse(row.record);
   }
-  list(runId: string, candidateId: string): OutreachAction[] {
+  async list(runId: string, candidateId: string): Promise<OutreachAction[]> {
     return (
-      this.store.db
+      (await this.store.db
         .prepare(
           "SELECT a.record FROM outreach a JOIN outreach_owners o ON o.action_id=a.id WHERE a.run_id=? AND a.candidate_id=? AND o.user_id=? ORDER BY a.rowid DESC LIMIT 30",
         )
-        .all(runId, candidateId, this.userId) as { record: string }[]
+        .all(runId, candidateId, this.userId)) as { record: string }[]
     ).map((row) => JSON.parse(row.record));
   }
-  private lead(runId: string, candidateId: string) {
-    if (!this.store.ownsRun(runId, this.userId)) throw new ActionError(404, "Opportunity not found in this account.");
-    const row = this.store.db
+  private async lead(runId: string, candidateId: string) {
+    if (!(await this.store.ownsRun(runId, this.userId)))
+      throw new ActionError(404, "Opportunity not found in this account.");
+    const row = (await this.store.db
       .prepare("SELECT snapshot FROM runs WHERE id=?")
-      .get(runId) as { snapshot: string } | undefined;
-    const run: RunSnapshot | undefined = row
-      ? JSON.parse(row.snapshot)
-      : undefined;
+      .get(runId)) as { snapshot: string } | undefined;
+    const run: RunSnapshot | undefined = row ? JSON.parse(row.snapshot) : undefined;
     if (
       !run ||
       run.mode !== "live" ||
       run.status !== "completed" ||
       !run.outcome?.decisions.some(
         (decision) =>
-          decision.candidateId === candidateId &&
-          decision.verdict === "opportunity",
+          decision.candidateId === candidateId && decision.verdict === "opportunity",
       )
     )
       throw new ActionError(
@@ -97,10 +96,9 @@ export class OutreachService {
   async prepare(value: Json): Promise<OutreachAction> {
     const runId = text(value.runId, 80),
       candidateId = text(value.candidateId, 100);
-    const { candidate } = this.lead(runId, candidateId);
-    const sender = this.google.status().email;
-    if (!sender)
-      throw new ActionError(409, "Connect Gmail and Google Calendar first.");
+    const { candidate } = await this.lead(runId, candidateId);
+    const sender = (await this.google.status()).email;
+    if (!sender) throw new ActionError(409, "Connect Gmail and Google Calendar first.");
     const recipient = email(value.recipient);
     if (value.recipientConfirmed !== true)
       throw new ActionError(
@@ -115,13 +113,12 @@ export class OutreachService {
           : value.kind === "email"
             ? "email"
             : undefined;
-    if (!kind)
-      throw new ActionError(400, "Choose a message or a meeting invitation.");
+    if (!kind) throw new ActionError(400, "Choose a message or a meeting invitation.");
     const subject = text(value.subject, 180);
     if (/[\r\n]/.test(subject))
       throw new ActionError(400, "The subject must be one line.");
     const body = text(value.text, 10_000),
-      history = this.list(runId, candidateId);
+      history = await this.list(runId, candidateId);
     if (
       history.some(
         (action) =>
@@ -221,17 +218,14 @@ export class OutreachService {
     }
     if (!candidate.name)
       throw new ActionError(409, "The business identity needs another check.");
-    return this.persist(action);
+    return await this.persist(action);
   }
   async availableSlots(value: Json) {
-    this.lead(text(value.runId, 80), text(value.candidateId, 100));
+    await this.lead(text(value.runId, 80), text(value.candidateId, 100));
     const timeZone = text(value.timeZone, 80),
       duration = Number(value.duration);
     if (![15, 20, 30, 45, 60].includes(duration))
-      throw new ActionError(
-        400,
-        "Choose a meeting duration between 15 and 60 minutes.",
-      );
+      throw new ActionError(400, "Choose a meeting duration between 15 and 60 minutes.");
     let local: Intl.DateTimeFormat;
     try {
       local = new Intl.DateTimeFormat("en-GB", {
@@ -256,10 +250,7 @@ export class OutreachService {
       items: [{ id: "primary" }],
     });
     const calendarMap = result.calendars as
-      | Record<
-          string,
-          { errors?: unknown[]; busy?: { start: string; end: string }[] }
-        >
+      | Record<string, { errors?: unknown[]; busy?: { start: string; end: string }[] }>
       | undefined;
     const calendar =
       calendarMap?.primary ??
@@ -267,19 +258,13 @@ export class OutreachService {
         ? Object.values(calendarMap)[0]
         : undefined);
     if (!calendar || calendar.errors?.length || !Array.isArray(calendar.busy))
-      throw new ActionError(
-        409,
-        "Google could not confirm calendar availability.",
-      );
+      throw new ActionError(409, "Google could not confirm calendar availability.");
     const busy = calendar.busy.map((period) => [
       Date.parse(period.start),
       Date.parse(period.end),
     ]);
     if (busy.some((period) => period.some((value) => !Number.isFinite(value))))
-      throw new ActionError(
-        502,
-        "Calendar availability could not be read reliably.",
-      );
+      throw new ActionError(502, "Calendar availability could not be read reliably.");
     const selected: { start: string; end: string; timeZone: string }[] = [],
       dates = new Set<string>();
     for (
@@ -312,16 +297,12 @@ export class OutreachService {
     return selected;
   }
   private async checkFree(action: OutreachAction) {
-    const availability = await this.google.request(
-      "/calendar/v3/freeBusy",
-      "POST",
-      {
-        timeMin: action.start,
-        timeMax: action.end,
-        items: [{ id: "primary" }],
-        timeZone: action.timeZone,
-      },
-    );
+    const availability = await this.google.request("/calendar/v3/freeBusy", "POST", {
+      timeMin: action.start,
+      timeMax: action.end,
+      items: [{ id: "primary" }],
+      timeZone: action.timeZone,
+    });
     const calendars = availability.calendars as
       Record<string, { errors?: unknown[]; busy?: unknown[] }> | undefined;
     const primary =
@@ -361,17 +342,12 @@ export class OutreachService {
         .toString("base64")
         .match(/.{1,76}/g)
         ?.join("\r\n") ?? "";
-    return Buffer.from(headers.join("\r\n") + "\r\n\r\n" + encoded).toString(
-      "base64url",
-    );
+    return Buffer.from(headers.join("\r\n") + "\r\n\r\n" + encoded).toString("base64url");
   }
   async approve(id: string, confirmed: unknown) {
-    let action = this.get(id);
+    let action = await this.get(id);
     if (confirmed !== true)
-      throw new ActionError(
-        400,
-        "Explicit approval of the preview is required.",
-      );
+      throw new ActionError(400, "Explicit approval of the preview is required.");
     if (action.state !== "prepared")
       throw new ActionError(
         409,
@@ -382,22 +358,22 @@ export class OutreachService {
         409,
         "The preview expired. Cancel it and prepare a fresh one.",
       );
-    this.lead(action.runId, action.candidateId);
-    if (this.google.status().email !== action.sender)
+    await this.lead(action.runId, action.candidateId);
+    if ((await this.google.status()).email !== action.sender)
       throw new ActionError(
         409,
         "The connected sender changed. Prepare a new preview for that account.",
       );
     // Claim durably before any network request. Concurrent clicks cannot send twice.
-    const claim = this.store.db
+    action.state = "sending";
+    action.executionStartedAt = new Date(this.now()).toISOString();
+    const claim = await this.store.db
       .prepare(
-        "UPDATE outreach SET state='sending' WHERE id=? AND state='prepared'",
+        "UPDATE outreach SET state='sending',record=? WHERE id=? AND state='prepared'",
       )
-      .run(id);
+      .run(JSON.stringify(action), id);
     if (!claim.changes)
       throw new ActionError(409, "This preview is already being processed.");
-    action.state = "sending";
-    this.persist(action);
     let issued = false;
     try {
       if (action.kind === "meeting") {
@@ -435,9 +411,7 @@ export class OutreachService {
           typeof event.hangoutLink === "string" ? event.hangoutLink : undefined;
         action.attendance = "needsAction";
       } else {
-        const parent = action.parentId
-          ? await this.sync(action.parentId)
-          : undefined;
+        const parent = action.parentId ? await this.sync(action.parentId) : undefined;
         if (parent?.receivedReply)
           throw new ActionError(
             409,
@@ -463,7 +437,7 @@ export class OutreachService {
       }
       action.state = "sent";
       action.sentAt = new Date(this.now()).toISOString();
-      action = this.persist(action);
+      action = await this.persist(action);
     } catch (error) {
       const rejected =
         error instanceof ActionError &&
@@ -474,18 +448,15 @@ export class OutreachService {
         error instanceof ActionError
           ? error.message
           : "The action could not be confirmed. No automatic retry was made.";
-      this.persist(action);
+      await this.persist(action);
       throw new ActionError(issued ? 502 : 409, action.error);
     }
     return action;
   }
   async sync(id: string): Promise<OutreachAction> {
-    const action = this.get(id);
-    if (action.sender !== this.google.status().email)
-      throw new ActionError(
-        409,
-        "Reconnect the Gmail account used for this item.",
-      );
+    const action = await this.get(id);
+    if (action.sender !== (await this.google.status()).email)
+      throw new ActionError(409, "Reconnect the Gmail account used for this item.");
     if (
       action.kind === "meeting" &&
       action.eventId &&
@@ -498,20 +469,15 @@ export class OutreachService {
       else {
         action.state = "sent";
         const attendees = event.attendees as
-          | { email?: string; responseStatus?: OutreachAction["attendance"] }[]
-          | undefined;
+          { email?: string; responseStatus?: OutreachAction["attendance"] }[] | undefined;
         action.attendance =
           attendees?.find(
             (attendee) => attendee.email?.toLowerCase() === action.recipient,
           )?.responseStatus ?? "needsAction";
         action.calendarUrl =
-          typeof event.htmlLink === "string"
-            ? event.htmlLink
-            : action.calendarUrl;
+          typeof event.htmlLink === "string" ? event.htmlLink : action.calendarUrl;
         action.meetUrl =
-          typeof event.hangoutLink === "string"
-            ? event.hangoutLink
-            : action.meetUrl;
+          typeof event.hangoutLink === "string" ? event.hangoutLink : action.meetUrl;
       }
     } else if (action.kind !== "meeting") {
       if (action.state === "uncertain") {
@@ -540,9 +506,7 @@ export class OutreachService {
           const address = from.match(/<([^>]+)>/)?.[1] ?? from.trim();
           return address.toLowerCase() !== action.sender?.toLowerCase();
         });
-        const sent = messages.find(
-          (message) => message.id === action.messageId,
-        );
+        const sent = messages.find((message) => message.id === action.messageId);
         const messageId = sent?.payload?.headers?.find(
           (header) => header.name.toLowerCase() === "message-id",
         )?.value;
@@ -550,28 +514,39 @@ export class OutreachService {
           action.rfcMessageId = messageId;
       }
     }
-    return this.persist(action);
+    return await this.persist(action);
   }
-  cancel(id: string) {
-    const action = this.get(id);
+  async cancel(id: string) {
+    const action = await this.get(id);
     if (action.state !== "prepared")
-      throw new ActionError(
-        409,
-        "Only an unsent preview can be cancelled here.",
-      );
+      throw new ActionError(409, "Only an unsent preview can be cancelled here.");
     action.state = "cancelled";
-    return this.persist(action);
+    const changed = await this.store.db
+      .prepare(
+        "UPDATE outreach SET state='cancelled',record=? WHERE id=? AND state='prepared'",
+      )
+      .run(JSON.stringify(action), id);
+    if (!changed.changes)
+      throw new ActionError(409, "This preview is already being processed.");
+    return action;
   }
-  recover() {
-    const rows = this.store.db
-      .prepare("SELECT a.record FROM outreach a JOIN outreach_owners o ON o.action_id=a.id WHERE a.state='sending' AND o.user_id=?")
-      .all(this.userId) as { record: string }[];
+  async recover() {
+    const rows = (await this.store.db
+      .prepare(
+        "SELECT a.record FROM outreach a JOIN outreach_owners o ON o.action_id=a.id WHERE a.state='sending' AND o.user_id=?",
+      )
+      .all(this.userId)) as { record: string }[];
     for (const row of rows) {
       const action: OutreachAction = JSON.parse(row.record);
+      if (
+        this.store.db.kind === "postgres" &&
+        this.now() - Date.parse(action.executionStartedAt || action.createdAt) < 150_000
+      )
+        continue;
       action.state = "uncertain";
       action.error =
         "The server restarted before confirmation. Check status; nothing was automatically resent.";
-      this.persist(action);
+      await this.persist(action);
     }
   }
 }

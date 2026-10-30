@@ -17,3 +17,7 @@ Token refresh against the real account, Gmail delivery to an explicitly approved
 The workflow intentionally requires a reviewed recipient, message and invitation. It does not guess an owner's email, negotiate commercial terms automatically, monitor the inbox continuously or run an unattended follow-up campaign. Those limits are visible in the app and setup guide.
 
 Later on 30 October, separate account sign-in and per-user Google connection migration were verified. A read-only Calendar check also succeeded after migration. [Account and capability checks](accounts-check.md) record isolation tests, real research results and remaining Google audience restrictions.
+
+## Subsequent Neon and Gmail check, 30 October
+
+The migrated Google connection performed a real expired-token refresh and a Calendar read. After explicit approval of the exact self-recipient, subject and body, one Gmail test message was sent only to the connected account. Google's receipt and the message's Inbox label were confirmed. This was a connector self-test, not business outreach. Real attendee invitation/acceptance remains unverified. [Vercel/Neon preparation findings](vercel-neon-check.md) include the isolated cross-instance tests and deployment boundary.

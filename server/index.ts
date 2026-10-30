@@ -4,14 +4,16 @@ import { createApi } from "./http.ts";
 
 if (existsSync(".env")) process.loadEnvFile(".env");
 const config = readConfig();
-const api = createApi(config);
+const api = await createApi(config);
 api.server.on("error", (error) => {
   console.error(`Quil API could not start: ${error.message}`);
   process.exitCode = 1;
   void api.close();
 });
-api.server.listen(config.port, "127.0.0.1", () => {
-  console.log(`Quil API: http://127.0.0.1:${config.port} (${config.mode})`);
+api.server.listen(config.port, config.bindHost, () => {
+  console.log(
+    `Quil: ${config.publicOrigin || `http://127.0.0.1:${config.port}`} (${config.mode})`,
+  );
   console.log(
     config.mode === "fixture"
       ? "Mozaik fixture mode. No paid model or search requests."

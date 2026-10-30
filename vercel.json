@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "regions": ["cle1"],
+  "functions": {
+    "api/**/*.ts": { "maxDuration": 180, "includeFiles": "node_modules/@mozaik-ai/core/node_modules/@mozaik-ai/cloud-sdk/**" }
+  }
+}

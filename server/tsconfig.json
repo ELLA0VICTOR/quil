@@ -13,5 +13,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["./**/*.ts", "../shared/**/*.ts", "../scripts/backend-demo.ts"]
+  "include": ["./**/*.ts", "../shared/**/*.ts", "../scripts/backend-demo.ts", "../scripts/migrate-neon.ts", "../api/**/*.ts"]
 }

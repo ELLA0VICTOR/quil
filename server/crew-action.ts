@@ -16,8 +16,7 @@ export async function crewAction<T>(
     failure: unknown;
   const runner: InferenceRunner = {
     run: async () => {
-      if (performed)
-        throw Error("The approved crew operation may only run once.");
+      if (performed) throw Error("The approved crew operation may only run once.");
       performed = true;
       try {
         result = await work();
@@ -60,7 +59,7 @@ export async function crewAction<T>(
     },
   });
   const started = Date.now();
-  store.append(runId, "outreach.agent.started", role, {
+  await store.append(runId, "outreach.agent.started", role, {
     task,
     loopId: loop.id,
   });
@@ -68,7 +67,7 @@ export async function crewAction<T>(
     const finished = await module.runLoop(loop.id);
     if (finished.stateId !== "completed" || !performed)
       throw Error("The crew operation did not complete.");
-    store.append(runId, "outreach.agent.completed", role, {
+    await store.append(runId, "outreach.agent.completed", role, {
       task,
       loopId: loop.id,
       elapsedMs: Date.now() - started,
@@ -80,7 +79,7 @@ export async function crewAction<T>(
     });
     return result as T;
   } catch (error) {
-    store.append(runId, "outreach.agent.failed", role, {
+    await store.append(runId, "outreach.agent.failed", role, {
       task,
       loopId: loop.id,
     });

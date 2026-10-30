@@ -22,6 +22,8 @@ import type {
 } from "../shared/mission.ts";
 import type { TaskProvider, TaskInput, TaskResult } from "./providers.ts";
 import { Store } from "./store.ts";
+import { setTimeout as delay } from "node:timers/promises";
+import { CloudTrace } from "./cloud.ts";
 
 const agents: AgentId[] = ["quil", "pip", "milo", "iris", "wren"];
 const roles: Record<AgentId, string> = {
@@ -99,12 +101,16 @@ export class MissionEngine {
   readonly settled = new Promise<void>((resolve) => {
     this.settle = resolve;
   });
+  private trace: CloudTrace;
+  readonly finished = this.settled.then(() => this.trace.end());
   constructor(
     readonly run: RunSnapshot,
     private store: Store,
     private provider: TaskProvider,
-    private onEvent: (event: RunEvent) => void = () => {},
+    private onEvent: (event: RunEvent) => void | Promise<void> = () => {},
+    cloud?: { cloudEnabled: boolean; cloudKey: string },
   ) {
+    this.trace = new CloudTrace(run.id, cloud);
     this.signal = this.abort.signal;
     const runner: InferenceRunner = {
       run: async (request) => {
@@ -115,10 +121,10 @@ export class MissionEngine {
             : "{}",
         );
         const { agent, input } = job as { agent: AgentId; input: TaskInput };
-        this.emit("operation.started", agent, { revision: input.revision });
+        await this.emit("operation.started", agent, { revision: input.revision });
         try {
           const result = await this.provider.execute(agent, input, this.signal);
-          this.emit("operation.completed", agent, { revision: input.revision });
+          await this.emit("operation.completed", agent, { revision: input.revision });
           await this.checkpoint();
           return {
             items: [{ type: "model_message", text: JSON.stringify(result) }],
@@ -126,7 +132,7 @@ export class MissionEngine {
             rowResponse: { provider: this.run.mode },
           };
         } catch (error) {
-          this.emit("operation.failed", agent, {
+          await this.emit("operation.failed", agent, {
             revision: input.revision,
             cancelled: this.signal.aborted,
           });
@@ -143,67 +149,95 @@ export class MissionEngine {
   private terminal() {
     return ["completed", "failed", "cancelled"].includes(this.run.status);
   }
-  private emit(
+  private async emit(
     type: string,
     agent: AgentId | undefined,
     data: Record<string, unknown>,
   ) {
     if (this.terminal() && !type.startsWith("run.")) return;
-    this.onEvent(this.store.append(this.run.id, type, agent, data));
+    const event = await this.store.append(this.run.id, type, agent, data);
+    this.trace.record(event);
+    await this.onEvent(event);
   }
-  private status(status: RunSnapshot["status"]) {
+  private async status(status: RunSnapshot["status"]) {
     this.run.status = status;
     this.run.updatedAt = new Date().toISOString();
-    this.store.saveRun(this.run);
+    await this.store.saveRun(this.run);
   }
   private async checkpoint() {
     this.signal.throwIfAborted();
+    if (this.store.db.kind === "postgres") {
+      let control = await this.store.control(this.run.id);
+      if (control?.deadline && control.deadline < Date.now()) {
+        await this.cancel();
+        this.signal.throwIfAborted();
+      }
+      if (control?.desired === "cancelled") {
+        await this.cancel();
+        this.signal.throwIfAborted();
+      }
+      if (control?.desired === "paused") {
+        if (this.run.status !== "paused") {
+          await this.status("paused");
+          await this.emit("run.paused", undefined, {});
+        }
+        while (control?.desired === "paused" && !this.signal.aborted) {
+          await delay(500, undefined, { signal: this.signal });
+          control = await this.store.control(this.run.id);
+        }
+        if (control?.desired === "cancelled") {
+          await this.cancel();
+          this.signal.throwIfAborted();
+        }
+        if (this.run.status === "paused") {
+          await this.status("running");
+          await this.emit("run.resumed", undefined, {});
+        }
+      }
+    }
     if (this.pauseWait) await this.pauseWait;
     this.signal.throwIfAborted();
   }
-  pause() {
+  async pause() {
     if (this.run.status !== "running")
       throw Error("Only a running mission can be paused");
     this.pauseWait = new Promise((resolve) => {
       this.releasePause = resolve;
     });
-    this.status("paused");
-    this.emit("run.paused", undefined, {});
+    await this.status("paused");
+    await this.emit("run.paused", undefined, {});
   }
-  resume() {
-    if (this.run.status !== "paused")
-      throw Error("Only a paused mission can resume");
-    this.status("running");
+  async resume() {
+    if (this.run.status !== "paused") throw Error("Only a paused mission can resume");
+    await this.status("running");
     this.releasePause?.();
     this.pauseWait = null;
-    this.emit("run.resumed", undefined, {});
+    await this.emit("run.resumed", undefined, {});
   }
-  cancel() {
+  async cancel() {
     if (this.terminal()) return;
     this.abort.abort();
     this.releasePause?.();
     this.pauseWait = null;
-    this.status("cancelled");
-    this.emit("run.cancelled", undefined, {});
+    await this.status("cancelled");
+    await this.emit("run.cancelled", undefined, {});
     this.settle();
   }
-  private fail(error: unknown) {
+  private async fail(error: unknown) {
     if (this.terminal()) return;
     // Never relay provider response bodies or request headers to the client.
     this.run.error =
-      error instanceof Error
-        ? error.message.slice(0, 200)
-        : "The mission failed";
+      error instanceof Error ? error.message.slice(0, 200) : "The mission failed";
     this.abort.abort();
     this.releasePause?.();
     this.pauseWait = null;
-    this.status("failed");
-    this.emit("run.failed", undefined, { message: this.run.error });
+    await this.status("failed");
+    await this.emit("run.failed", undefined, { message: this.run.error });
     this.settle();
   }
   private async publish(agent: AgentId, type: string, revision?: number) {
     await this.checkpoint();
-    this.emit("coordination.message", agent, {
+    await this.emit("coordination.message", agent, {
       type,
       ...(revision !== undefined ? { revision } : {}),
     });
@@ -238,20 +272,15 @@ export class MissionEngine {
         },
       },
     });
-    this.emit("agent.started", agent, { loopId: loop.id, revision });
+    await this.emit("agent.started", agent, { loopId: loop.id, revision });
     const started = Date.now();
     const finished = await this.module.runLoop(loop.id);
     this.signal.throwIfAborted();
-    if (finished.stateId !== "completed")
-      throw Error("Agent loop did not finish");
-    const operation = finished.completedOperations.find(
-      (op) => op.type === "inference",
-    );
+    if (finished.stateId !== "completed") throw Error("Agent loop did not finish");
+    const operation = finished.completedOperations.find((op) => op.type === "inference");
     if (!operation || operation.type !== "inference")
       throw Error("Agent produced no inference record");
-    const output = operation.result.items.find(
-      (item) => item.type === "model_message",
-    );
+    const output = operation.result.items.find((item) => item.type === "model_message");
     if (!output || output.type !== "model_message")
       throw Error("Agent produced no answer");
     const result: TaskResult = JSON.parse(output.text);
@@ -285,12 +314,12 @@ export class MissionEngine {
                   : "No supported pitch to draft."
               : "The reviewed answer is ready.";
     if (result.corrections?.length)
-      this.emit("draft.corrected", agent, {
+      await this.emit("draft.corrected", agent, {
         corrections: result.corrections,
         revision,
       });
-    this.emit("agent.update", agent, { text: note, revision });
-    this.emit("agent.completed", agent, {
+    await this.emit("agent.update", agent, { text: note, revision });
+    await this.emit("agent.completed", agent, {
       loopId: loop.id,
       revision,
       elapsedMs: Date.now() - started,
@@ -310,36 +339,26 @@ export class MissionEngine {
     try {
       const result = await this.task("wren", revision);
       if (revision === 0 && this.state.reviewDone) {
-        this.emit("draft.invalidated", "wren", {
+        await this.emit("draft.invalidated", "wren", {
           reason: "Review changed while a provisional draft was being written",
           revision,
         });
       } else {
         this.state.drafts = result.drafts ?? [];
         this.state.draftRevision = revision;
-        this.emit(
-          revision === 0 ? "draft.provisional" : "draft.approved",
-          "wren",
-          {
-            candidateIds: this.state.drafts.map((d) => d.candidateId),
-            revision,
-          },
-        );
+        await this.emit(revision === 0 ? "draft.provisional" : "draft.approved", "wren", {
+          candidateIds: this.state.drafts.map((d) => d.candidateId),
+          revision,
+        });
       }
     } finally {
       this.wrenBusy = false;
     }
-    if (this.state.reviewDone && this.state.draftRevision !== 1)
-      await this.write();
-    else if (this.state.reviewDone)
-      await this.publish("wren", "draft.ready", 1);
+    if (this.state.reviewDone && this.state.draftRevision !== 1) await this.write();
+    else if (this.state.reviewDone) await this.publish("wren", "draft.ready", 1);
   }
   private async summarize() {
-    if (
-      this.summaryStarted ||
-      !this.state.reviewDone ||
-      this.state.draftRevision !== 1
-    )
+    if (this.summaryStarted || !this.state.reviewDone || this.state.draftRevision !== 1)
       return;
     this.summaryStarted = true;
     const result = await this.task("quil", 1);
@@ -357,27 +376,25 @@ export class MissionEngine {
       sources: this.state.sources,
       websiteChecks: this.state.websiteChecks,
     };
-    this.status("completed");
-    this.emit("run.completed", "quil", {
+    await this.status("completed");
+    await this.emit("run.completed", "quil", {
       outcome: this.run.outcome,
-      usage: this.store.usage(this.run.id),
+      usage: await this.store.usage(this.run.id),
     });
     this.settle();
   }
   async start() {
     if (this.run.status !== "queued") return;
-    this.status("running");
-    this.emit("run.started", "quil", {
+    await this.trace.start();
+    await this.status("running");
+    await this.emit("run.started", "quil", {
       mode: this.run.mode,
       fictional: this.run.mode === "fixture",
     });
     try {
       const space = await this.runtime.createSpace(`Quil ${this.run.id}`);
       this.spaceId = space.getId();
-      const actions: Record<
-        AgentId,
-        { types: string[]; apply: () => Promise<void> }
-      > = {
+      const actions: Record<AgentId, { types: string[]; apply: () => Promise<void> }> = {
         pip: {
           types: ["mission.started"],
           apply: async () => {
@@ -413,9 +430,9 @@ export class MissionEngine {
         },
         wren: {
           types: ["research.ready", "review.ready"],
-          apply: () => this.write(),
+          apply: async () => await this.write(),
         },
-        quil: { types: ["draft.ready"], apply: () => this.summarize() },
+        quil: { types: ["draft.ready"], apply: async () => await this.summarize() },
       };
       for (const id of agents) {
         const agent = await this.module.createAgent({
@@ -428,7 +445,7 @@ export class MissionEngine {
           specification: new Match(actions[id].types),
           processor: {
             apply: () => {
-              void actions[id].apply().catch((error) => this.fail(error));
+              void actions[id].apply().catch(async (error) => await this.fail(error));
             },
           },
         };
@@ -458,7 +475,7 @@ export class MissionEngine {
       }
       await this.publish("quil", "mission.started");
     } catch (error) {
-      this.fail(error);
+      await this.fail(error);
     }
   }
   private async finishReview() {
@@ -478,18 +495,14 @@ export class MissionEngine {
         .filter((d) => d.verdict !== "opportunity")
         .map((d) => d.candidateId),
     );
-    const invalid = this.state.drafts.filter((d) =>
-      rejected.has(d.candidateId),
-    );
-    this.state.drafts = this.state.drafts.filter(
-      (d) => !rejected.has(d.candidateId),
-    );
-    this.emit("review.completed", "iris", {
+    const invalid = this.state.drafts.filter((d) => rejected.has(d.candidateId));
+    this.state.drafts = this.state.drafts.filter((d) => !rejected.has(d.candidateId));
+    await this.emit("review.completed", "iris", {
       decisions: this.state.decisions,
       withdrawnDrafts: invalid.map((d) => d.candidateId),
     });
     if (invalid.length)
-      this.emit("draft.invalidated", "iris", {
+      await this.emit("draft.invalidated", "iris", {
         candidateIds: invalid.map((d) => d.candidateId),
         reason: "Independent review contradicted the provisional pitch",
       });

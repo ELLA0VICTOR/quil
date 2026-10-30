@@ -40,9 +40,7 @@ try {
   let version;
   for (let i = 0; i < 50; i++) {
     try {
-      version = await (
-        await fetch("http://127.0.0.1:9227/json/version")
-      ).json();
+      version = await (await fetch("http://127.0.0.1:9227/json/version")).json();
       break;
     } catch {
       await wait(150);
@@ -100,7 +98,10 @@ try {
         )
       )
     )
-      errors.push(message.params.entry.text);
+      errors.push(
+        message.params.entry.text +
+          (message.params.entry.url ? " " + message.params.entry.url.split("?")[0] : ""),
+      );
   });
   const evaluate = async (expression) => {
     const r = await send("Runtime.evaluate", {
@@ -109,9 +110,7 @@ try {
       returnByValue: true,
     });
     if (r.exceptionDetails)
-      throw Error(
-        r.exceptionDetails.exception?.description || r.exceptionDetails.text,
-      );
+      throw Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
   const click = async (selector) =>
@@ -124,10 +123,7 @@ try {
       quality: 82,
       captureBeyondViewport: false,
     });
-    await writeFile(
-      path.join(out, name + ".jpg"),
-      Buffer.from(result.data, "base64"),
-    );
+    await writeFile(path.join(out, name + ".jpg"), Buffer.from(result.data, "base64"));
   };
 
   await send("Page.enable");
@@ -184,8 +180,12 @@ try {
   );
   await wait(100);
   await screenshot("14-footer");
-  const qaUserId = await evaluate("fetch('/api/session').then(r=>r.json()).then(r=>r.user.id)");
-  await send("Page.addScriptToEvaluateOnNewDocument", { source: `window.__quilQaUserId=${JSON.stringify(qaUserId)}` });
+  const qaUserId = await evaluate(
+    "fetch('/api/session').then(r=>r.json()).then(r=>r.user.id)",
+  );
+  await send("Page.addScriptToEvaluateOnNewDocument", {
+    source: `window.__quilQaUserId=${JSON.stringify(qaUserId)}`,
+  });
   await evaluate(`window.__quilQaUserId=${JSON.stringify(qaUserId)}`);
   await click(".header-cta");
   await wait(350);
@@ -258,9 +258,7 @@ try {
     await evaluate("document.getElementById('crew-prompt').focus()");
     await send("Input.insertText", { text });
   };
-  await type(
-    "Find cleaning businesses in Manchester that could use a website.",
-  );
+  await type("Find cleaning businesses in Manchester that could use a website.");
   await evaluate(
     "window.__pauseWatcher=setInterval(()=>{const b=document.querySelector('.composer-stop:not(:disabled)');if(b){clearInterval(window.__pauseWatcher);b.click()}},8)",
   );
@@ -350,9 +348,7 @@ try {
     "document.querySelectorAll('.lead-evidence>div').length",
   );
   await click(".lead-entry-links button:nth-child(2)");
-  const draft = await evaluate(
-    "!!document.querySelector('.lead-introduction textarea')",
-  );
+  const draft = await evaluate("!!document.querySelector('.lead-introduction textarea')");
   await screenshot("18-inline-introduction");
   await evaluate(
     "(()=>{const field=document.querySelector('.lead-introduction textarea');field.focus();field.setSelectionRange(field.value.length,field.value.length)})()",
@@ -532,32 +528,104 @@ try {
   if (process.env.QUIL_QA_ACCOUNTS) {
     const [alice, bob] = JSON.parse(process.env.QUIL_QA_ACCOUNTS);
     const enterAccount = async (account) => {
-      await send("Network.setCookie", { name: "quil_session", value: account.token, url: qaBase, path: "/", httpOnly: true, sameSite: "Lax" });
+      // Leave the old document before replacing its HTTP-only fixture cookie.
+      // Otherwise its pending autosave correctly fails the stale-workspace guard.
+      await send("Page.navigate", { url: "about:blank" });
+      await wait(80);
+      await send("Network.setCookie", {
+        name: "quil_session",
+        value: account.token,
+        url: qaBase,
+        path: "/",
+        httpOnly: true,
+        sameSite: "Lax",
+      });
       await send("Page.navigate", { url: qaBase + "/#/workspace" });
       // A fragment-only navigation retains the old React tree. Simulate a fresh
       // signed-in page load after replacing this fixture's HTTP-only cookie.
-      await send("Page.reload"); await wait(120);
+      await wait(120);
       const email = account.id.replace("browser-", "") + "@example.test";
-      for (let i=0;i<80;i++) { if (await evaluate(`document.querySelector('.room-account-button')?.title===${JSON.stringify(email)}`)) return; await wait(50); }
+      for (let i = 0; i < 80; i++) {
+        if (
+          await evaluate(
+            `document.querySelector('.room-account-button')?.title===${JSON.stringify(email)}`,
+          )
+        )
+          return;
+        await wait(50);
+      }
       throw Error("The fixture account did not open in the browser");
     };
     await enterAccount(alice);
-    const startsEmpty = await evaluate("!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')");
-    await type("Find cleaning businesses in Manchester that need a website."); await click(".composer-send");
-    for (let i=0;i<120;i++) { if(await evaluate("document.querySelector('.crew-exchange')?.dataset.status==='completed'"))break;await wait(50); }
+    const startsEmpty = await evaluate(
+      "!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')",
+    );
+    await type("Find cleaning businesses in Manchester that need a website.");
+    await click(".composer-send");
+    for (let i = 0; i < 120; i++) {
+      if (
+        await evaluate(
+          "document.querySelector('.crew-exchange')?.dataset.status==='completed'",
+        )
+      )
+        break;
+      await wait(50);
+    }
     await click(".lead-entry .lead-save");
-    for (let i=0;i<50;i++) { if(await evaluate("fetch('/api/me/saved').then(r=>r.json()).then(r=>r.saved.length===1)"))break;await wait(50); }
-    const aliceSaved = await evaluate("(async()=> (await (await fetch('/api/me/saved')).json()).saved.length===1&&localStorage.getItem('quil:browser-alice:saved:v3')!==null)()");
+    for (let i = 0; i < 50; i++) {
+      if (
+        await evaluate(
+          "fetch('/api/me/saved').then(r=>r.json()).then(r=>r.saved.length===1)",
+        )
+      )
+        break;
+      await wait(50);
+    }
+    const aliceSaved = await evaluate(
+      "(async()=> (await (await fetch('/api/me/saved')).json()).saved.length===1&&localStorage.getItem('quil:browser-alice:saved:v3')!==null)()",
+    );
     await enterAccount(bob);
-    const bobEmpty = await evaluate("!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')&&fetch('/api/me/saved').then(r=>r.json()).then(r=>r.saved.length===0)");
+    const bobEmpty = await evaluate(
+      "!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')&&fetch('/api/me/saved').then(r=>r.json()).then(r=>r.saved.length===0)",
+    );
     await enterAccount(alice);
-    for(let i=0;i<50;i++){if(await evaluate("document.querySelector('.room-saved-button').textContent.includes('1')"))break;await wait(50);}
-    const aliceRestored = await evaluate("document.querySelector('.room-saved-button').textContent.includes('1')");
-    await click(".room-account-button"); await click(".account-content .text-link");
-    for(let i=0;i<50;i++){if(await evaluate("!!document.querySelector('.room-account-button[aria-label=\"Sign in to Quil\"]')"))break;await wait(50);}
-    const signedOutClean = await evaluate("!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')&&Object.keys(localStorage).every(k=>!k.startsWith('quil:browser-alice:'))&&Object.keys(sessionStorage).every(k=>!k.startsWith('quil:browser-alice:'))");
-    accountIsolation = { startsEmpty, aliceSaved, bobEmpty, aliceRestored, signedOutClean };
-    if (Object.values(accountIsolation).some(value => value !== true)) throw Error("Browser account isolation failed: " + JSON.stringify(accountIsolation));
+    for (let i = 0; i < 50; i++) {
+      if (
+        await evaluate(
+          "document.querySelector('.room-saved-button').textContent.includes('1')",
+        )
+      )
+        break;
+      await wait(50);
+    }
+    const aliceRestored = await evaluate(
+      "document.querySelector('.room-saved-button').textContent.includes('1')",
+    );
+    await click(".room-account-button");
+    await click(".account-content .text-link");
+    for (let i = 0; i < 50; i++) {
+      if (
+        await evaluate(
+          "!!document.querySelector('.room-account-button[aria-label=\"Sign in to Quil\"]')",
+        )
+      )
+        break;
+      await wait(50);
+    }
+    const signedOutClean = await evaluate(
+      "!document.querySelector('.crew-exchange')&&!document.querySelector('.room-saved-button').textContent.includes('1')&&Object.keys(localStorage).every(k=>!k.startsWith('quil:browser-alice:'))&&Object.keys(sessionStorage).every(k=>!k.startsWith('quil:browser-alice:'))",
+    );
+    accountIsolation = {
+      startsEmpty,
+      aliceSaved,
+      bobEmpty,
+      aliceRestored,
+      signedOutClean,
+    };
+    if (Object.values(accountIsolation).some((value) => value !== true))
+      throw Error(
+        "Browser account isolation failed: " + JSON.stringify(accountIsolation),
+      );
   }
   const report = {
     desktop,
@@ -596,10 +664,7 @@ try {
     accountIsolation,
     errors: [...new Set(errors)],
   };
-  await writeFile(
-    path.join(out, "report.json"),
-    JSON.stringify(report, null, 2),
-  );
+  await writeFile(path.join(out, "report.json"), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   if (
     errors.length ||

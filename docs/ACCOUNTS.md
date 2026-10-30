@@ -31,3 +31,7 @@ Run tokens are scoped to both their owning user and session-authenticated accoun
 ## Public hosting configuration
 
 Local development remains on loopback and is not deployed by these changes. Before public hosting, set a canonical HTTPS `QUIL_PUBLIC_ORIGIN` and register that origin's sign-in callback with Google. Configure the agent client's callback separately. Production cookies must be Secure, and requests must go through the configured origin/reverse proxy. Google testing/verification requirements remain separate from application-level user isolation.
+
+## Vercel/Neon update, 30 October
+
+Accounts, sessions, handoff state, run ownership, saved items and encrypted Google connections can now persist in Neon across Vercel instances. The developer's local account/history and budget ledger were migrated without deleting the SQLite source. Use [the Vercel guide](VERCEL-SETUP.md) for deployment and canonical callbacks, and [the verification record](vercel-neon-check.md) for actual checks. Google Testing/verification remains separate.

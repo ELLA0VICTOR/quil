@@ -20,7 +20,7 @@ The frontend is built with React, TypeScript, Vite and Three.js. A separate loca
 
 **The chat is connected to the backend.** `src/hooks/useCrewRuns.ts` consumes server events through `src/lib/api.ts`; agent activity, corrections, sources, introductions and the single final answer come from the run. There is no timed frontend mission script or local sample-data fallback. Default fixture mode still uses fictional records without paid inference.
 
-**Development and review are local-only. Do not publish, push for hosting, or redeploy without the owner's explicit instruction.**
+**The owner handles deployment on Vercel.** The app is prepared for Vercel + Neon; Codex has not deployed or pushed it. Follow [the deployment guide](docs/VERCEL-SETUP.md).
 
 ## Run
 
@@ -55,7 +55,7 @@ Run the second command in another terminal while the API is running. For automat
 
 - `server/engine.ts`: five Mozaik agents, shared runtime state, event-driven coordination and actual agent loops.
 - `server/providers.ts`: deterministic fixture provider, bounded GPT-6 Luna Responses adapter and cached Serper search adapter.
-- `server/store.ts`: SQLite run records, event replay, conservative spending reservations and cache.
+- `server/store.ts` / `server/database.ts`: SQLite or Neon run records, event replay, conservative spending reservations and cache.
 - `server/http.ts`: run creation, authenticated run access, SSE, pause/resume and cancellation.
 - `shared/mission.ts`: browser/server protocol. Run access tokens are returned only when creating a run; only their hashes are stored.
 
@@ -115,7 +115,7 @@ The [official GPT-6 Luna model page](https://developers.openai.com/api/docs/mode
 
 Default safeguards:
 
-- **$0.50 total / $0.02 per run** in conservative model-cost estimates, reserved transactionally in SQLite **before** each request; up to seven model requests per run.
+- **$1.50 total / $0.02 per run** in conservative model-cost estimates, reserved transactionally in the application database **before** each request; up to seven model requests per run.
 - Input cost counted at the standard cache-write ceiling, without assuming discounts. Prices are pinned to the published GPT-6 Luna standard rates checked on 29 October 2026. These are application estimates, not an account-wide billing limit; review pricing before later reuse.
 - Incomplete or failed calls with known usage are charged to the ledger. Ambiguous network failures and interrupted calls retain the full reservation. Restarting the server does not reset spending.
 - **50 total / four per run** Serper requests. Search credits/costs are separate from the OpenAI dollar ceiling. Failed searches still count against the allowance.
@@ -123,7 +123,7 @@ Default safeguards:
 - Discovery widens once after a successful empty extraction, keeping enough search allowance for independent review. It never retries ambiguous provider failures.
 - Cached public search records for six hours and account-scoped model responses for one hour. Only relevant evidence is sent to the writing agent.
 
-`.quil-data/` holds the ignored ledger and traces. Deleting it also deletes application spending history, so do not delete it to resolve a request failure. Signed-in users have separate saved research, run ownership, encrypted Google connections and outreach records. Each run requires both its owning workspace session and its private run token. Anonymous guests can try only the fictional example. See [account setup, migration and public-hosting prerequisites](docs/ACCOUNTS.md).
+Local fixture development uses ignored `.quil-data/` SQLite storage; Vercel uses Neon. The developer's account, research and existing charges were migrated into Neon on 30 October. Do not reset either ledger to resolve a request failure. Signed-in users have separate saved research, run ownership, encrypted Google connections and outreach records. Each run requires both its owning workspace session and its private run token. Anonymous guests can try only the fictional example. See [account setup, migration and public-hosting prerequisites](docs/ACCOUNTS.md).
 
 Search snippets are not website uptime checks. Missing website fields remain unknown. A matching website reference prevents a missing-website pitch. An existing website can still have a manual-booking opportunity, but only an explicit, location-matched instruction supports that suggestion. Online-booking links or contrary records keep the result inconclusive. Social profiles alone never prove a missing website. Sources and retrieval times accompany decisions. Source IDs include the observation, so another search cannot overwrite an earlier snippet. Milo also reads a bounded HTML page from a listed standalone website: public DNS/IP checks, address pinning, redirect validation, no scripts/images, and partial-page reporting. A returned page is not proof of full functionality or ownership. Introductions quote the supporting record; an ungrounded model draft is replaced locally without a paid retry, with the correction recorded in the trace. Nothing is sent without an approved outreach preview. The optional Gmail/Calendar integration is described below; payments are not implemented.
 
@@ -138,7 +138,7 @@ Tests cover account isolation (including leaked run tokens), separate encrypted 
 
 The hackathon requires Mozaik and concurrent agents. The execution trace records the actual coordination, and the connected interface follows those events.
 
-On 30 October, real Google Sign-In and private-connection migration succeeded. The updated suite passed 43 tests and browser checks across 11 viewports, including account switching and sign-out. Three real research cases exercised both an editable offer and rejection of unsupported pitches. See [account and capability findings](docs/accounts-check.md) for costs, fixes and remaining Google audience/delivery limits.
+On 30 October, real Google Sign-In and private-connection migration succeeded. The current suite passed 46 offline tests, a separately executed real-Neon cross-instance test, and browser checks across 11 viewports, including account switching and sign-out. Three real research cases exercised both an editable offer and rejection of unsupported pitches. See [account and capability findings](docs/accounts-check.md) for costs, fixes and remaining Google audience/delivery limits.
 
 ## Visual implementation
 
@@ -173,6 +173,12 @@ Use **Tailored offer** below an approved finding to edit the rationale, scope an
 
 **Contact & next steps** prepares a message or calendar invitation for explicit approval. [Connect your Google account](docs/GOOGLE-SETUP.md) through the envelope in the header. You enter a checked recipient; public website mail links can help, but Quil does not infer the owner's identity. Follow-ups are prepared for day 3 and day 7, checked against the created Gmail thread, and stopped if a reply arrives. There is no unattended campaign scheduler. Calendar suggestions use your free weekday times; the business's availability still needs agreement. An invitation is not labelled accepted until Google reports the attendee's response.
 
-Google credentials stay server-side and tokens are encrypted in the ignored local store. Approval previews are persisted, expire after 30 minutes, claim execution atomically and never automatically resend an uncertain request. Wren's preparation and Quil's execution/status checks run through actual Mozaik agent loops in `server/crew-action.ts`, without additional model inference. Fictional examples and withdrawn leads cannot send. `server/tests/outreach.test.ts` tests Google operations using injected transports, including reply races, duplicate clicks, calendar conflicts and receipt recovery. A separate browser check exercised the connected preview/send/invitation screens with mocked Google responses. Actual Google authorization and read-only Calendar access were verified on 30 October 2026; the app returned three suggested times. Gmail delivery, token refresh and real invitations still need live verification. See [the verification record](docs/outreach-check.md).
+Google credentials stay server-side and tokens are encrypted in the configured database. Approval previews are persisted, expire after 30 minutes, claim execution atomically and never automatically resend an uncertain request. Wren's preparation and Quil's execution/status checks run through actual Mozaik agent loops in `server/crew-action.ts`, without additional model inference. Fictional examples and withdrawn leads cannot send. `server/tests/outreach.test.ts` tests Google operations using injected transports, including reply races, duplicate clicks, calendar conflicts and receipt recovery. A separate browser check exercised the connected preview/send/invitation screens with mocked Google responses. Actual Google authorization, read-only Calendar access and expired-token refresh were verified. One explicitly approved self-email reached the connected Gmail account's Inbox on 30 October. Real meeting invitation/acceptance and business-owner outreach remain unverified. See [the verification record](docs/outreach-check.md).
 
 Integration routes: `GET /api/google/status`, `POST /api/google/connect`, `GET /api/google/callback`, `POST /api/google/disconnect`, `GET /api/outreach`, `POST /api/outreach/prepare`, `POST /api/outreach/slots`, and `POST /api/outreach/:id/approve|sync|cancel`. Writes require the signed-in workspace cookie, an allowed Origin and the review header. Runs, saved prospects, Google credentials and outreach actions are isolated by user. Public hosting also requires canonical HTTPS callbacks and Google audience/verification setup; the local app has not been deployed.
+
+## Vercel and Neon
+
+The owner chose Vercel with Neon, without a paid Render service. `api/[...path].ts` exposes the API, registers bounded work with Vercel's `waitUntil`, and uses the same PostgreSQL records across instances. OAuth state, controls, events, saved items and approvals are durable; budget and admission checks use transactions. The local app now uses Neon as well, with the original SQLite database preserved. [Deployment instructions](docs/VERCEL-SETUP.md) and [verified findings](docs/vercel-neon-check.md) distinguish actual Neon/Google checks from pending deployed-host checks.
+
+Optional Mozaik Cloud exports only selected research execution metadata. It remains off and unpaired by default. Run `npm run cloud:pair` and enable `QUIL_ENABLE_MOZAIK_CLOUD` only when ready; deployed export needs its own private project key. Public source records and the current local trace work without Cloud.

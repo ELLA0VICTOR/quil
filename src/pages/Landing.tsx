@@ -244,6 +244,8 @@ export default function Landing({
             <a href="#the-crew">
               Meet the crew <Icon name="arrow-up" size={14} />
             </a>
+            <a href="https://github.com/ELLA0VICTOR/quil" target="_blank" rel="noreferrer">Source on GitHub <Icon name="arrow-up" size={14} /></a>
+            <a href="/privacy.html">Privacy <Icon name="arrow-up" size={14} /></a>
             <button onClick={openWorkspace}>
               Open Quil <Icon name="arrow-up" size={14} />
             </button>
